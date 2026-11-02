@@ -1,0 +1,221 @@
+using Alcifra.Tube.Catalogue;
+using Alcifra.Tube.Module;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using SimplArchive.ModuleAbi;
+
+namespace Alcifra.Tube.Api;
+
+/// <summary>
+/// The PeerTube API's read side (ADR 0004), the paths NewPipe's extractor and browser clients request: the instance
+/// config, the catalogue under every sort the clients know (all newest first: no counters here), a video with its one
+/// file, its description, captions, chapters and storyboards (empty), channels (folders) and the account (the tenant)
+/// with their videos, and search. Served to anyone on the tenant's video host; only published videos exist.
+/// </summary>
+[ApiController]
+[AllowAnonymous]
+[Route(TubeModule.RootPrefix + "/api/v1")]
+public sealed class PeerTubeController(VideoCatalogue catalogue, IModuleArchiveFacade archive, IModuleCallerContext caller) : ControllerBase
+{
+    private static readonly object NoItems = new { total = 0, data = Array.Empty<object>() };
+
+    [HttpGet("config")]
+    public async Task<IActionResult> Config(CancellationToken ct)
+    {
+        var account = await AccountAsync(ct);
+        return Ok(PeerTubeShapes.Config(account.Name, account.Description));
+    }
+
+    [HttpHead("config")]
+    public Task<IActionResult> ConfigHead(CancellationToken ct) => Config(ct);
+
+    [HttpGet("videos")]
+    public Task<IActionResult> Videos([FromQuery] int start = 0, [FromQuery] int count = 15, CancellationToken ct = default) => ListAsync(null, null, start, count, ct);
+
+    [HttpHead("videos")]
+    public Task<IActionResult> VideosHead([FromQuery] int start = 0, [FromQuery] int count = 15, CancellationToken ct = default) => Videos(start, count, ct);
+
+    [HttpGet("videos/{videoId:guid}")]
+    public async Task<IActionResult> Video(Guid videoId, CancellationToken ct)
+    {
+        if (await catalogue.PublishedAsync(videoId, ct) is not { } video)
+        {
+            return NotFound();
+        }
+
+        var account = await AccountAsync(ct);
+        var document = await archive.GetDocumentAsync(videoId, ct);
+        return Ok(PeerTubeShapes.VideoDetail(video, await ChannelAsync(video, ct), account, Host, ExtensionOf(document?.Name)));
+    }
+
+    [HttpHead("videos/{videoId:guid}")]
+    public Task<IActionResult> VideoHead(Guid videoId, CancellationToken ct) => Video(videoId, ct);
+
+    [HttpGet("videos/{videoId:guid}/description")]
+    public async Task<IActionResult> Description(Guid videoId, CancellationToken ct) =>
+        await catalogue.PublishedAsync(videoId, ct) is { } video ? Ok(new { description = video.Description }) : NotFound();
+
+    [HttpHead("videos/{videoId:guid}/description")]
+    public Task<IActionResult> DescriptionHead(Guid videoId, CancellationToken ct) => Description(videoId, ct);
+
+    [HttpGet("videos/{videoId:guid}/captions")]
+    public async Task<IActionResult> Captions(Guid videoId, CancellationToken ct) => await catalogue.PublishedAsync(videoId, ct) is null ? NotFound() : Ok(NoItems);
+
+    [HttpHead("videos/{videoId:guid}/captions")]
+    public Task<IActionResult> CaptionsHead(Guid videoId, CancellationToken ct) => Captions(videoId, ct);
+
+    [HttpGet("videos/{videoId:guid}/chapters")]
+    public async Task<IActionResult> Chapters(Guid videoId, CancellationToken ct) => await catalogue.PublishedAsync(videoId, ct) is null ? NotFound() : Ok(new { chapters = Array.Empty<object>() });
+
+    [HttpHead("videos/{videoId:guid}/chapters")]
+    public Task<IActionResult> ChaptersHead(Guid videoId, CancellationToken ct) => Chapters(videoId, ct);
+
+    [HttpGet("videos/{videoId:guid}/storyboards")]
+    public async Task<IActionResult> Storyboards(Guid videoId, CancellationToken ct) => await catalogue.PublishedAsync(videoId, ct) is null ? NotFound() : Ok(new { storyboards = Array.Empty<object>() });
+
+    [HttpHead("videos/{videoId:guid}/storyboards")]
+    public Task<IActionResult> StoryboardsHead(Guid videoId, CancellationToken ct) => Storyboards(videoId, ct);
+
+    [HttpGet("video-channels/{name}")]
+    public async Task<IActionResult> VideoChannel(string name, CancellationToken ct) =>
+        await FolderAsync(name, ct) is { } channel ? Ok(PeerTubeShapes.ChannelJson(channel, await AccountAsync(ct), Host)) : NotFound();
+
+    [HttpHead("video-channels/{name}")]
+    public Task<IActionResult> VideoChannelHead(string name, CancellationToken ct) => VideoChannel(name, ct);
+
+    [HttpGet("video-channels/{name}/videos")]
+    public async Task<IActionResult> VideoChannelVideos(string name, [FromQuery] int start = 0, [FromQuery] int count = 15, CancellationToken ct = default) =>
+        await FolderAsync(name, ct) is { } channel ? await ListAsync(channel.FolderId, null, start, count, ct) : NotFound();
+
+    [HttpHead("video-channels/{name}/videos")]
+    public Task<IActionResult> VideoChannelVideosHead(string name, [FromQuery] int start = 0, [FromQuery] int count = 15, CancellationToken ct = default) => VideoChannelVideos(name, start, count, ct);
+
+    [HttpGet("video-channels/{name}/video-playlists")]
+    public async Task<IActionResult> VideoChannelPlaylists(string name, CancellationToken ct) => await FolderAsync(name, ct) is null ? NotFound() : Ok(NoItems);
+
+    [HttpHead("video-channels/{name}/video-playlists")]
+    public Task<IActionResult> VideoChannelPlaylistsHead(string name, CancellationToken ct) => VideoChannelPlaylists(name, ct);
+
+    [HttpGet("accounts/{name}")]
+    public async Task<IActionResult> AccountInfo(string name, CancellationToken ct) =>
+        IsOurAccount(name) ? Ok(PeerTubeShapes.AccountJson(await AccountAsync(ct), Host)) : NotFound();
+
+    [HttpHead("accounts/{name}")]
+    public Task<IActionResult> AccountInfoHead(string name, CancellationToken ct) => AccountInfo(name, ct);
+
+    [HttpGet("accounts/{name}/videos")]
+    public Task<IActionResult> AccountVideos(string name, [FromQuery] int start = 0, [FromQuery] int count = 15, CancellationToken ct = default) =>
+        IsOurAccount(name) ? ListAsync(null, null, start, count, ct) : Task.FromResult<IActionResult>(NotFound());
+
+    [HttpHead("accounts/{name}/videos")]
+    public Task<IActionResult> AccountVideosHead(string name, [FromQuery] int start = 0, [FromQuery] int count = 15, CancellationToken ct = default) => AccountVideos(name, start, count, ct);
+
+    [HttpGet("accounts/{name}/video-channels")]
+    public async Task<IActionResult> AccountChannels(string name, CancellationToken ct)
+    {
+        if (!IsOurAccount(name))
+        {
+            return NotFound();
+        }
+
+        var account = await AccountAsync(ct);
+        var channels = new List<object>();
+        foreach (var folderId in (await catalogue.PublishedAsync(ct)).Select(v => v.FolderId).OfType<Guid>().Distinct())
+        {
+            channels.Add(PeerTubeShapes.ChannelJson(await ChannelOfAsync(folderId, ct), account, Host));
+        }
+
+        return Ok(new { total = channels.Count, data = channels });
+    }
+
+    [HttpHead("accounts/{name}/video-channels")]
+    public Task<IActionResult> AccountChannelsHead(string name, CancellationToken ct) => AccountChannels(name, ct);
+
+    [HttpGet("search/videos")]
+    public Task<IActionResult> SearchVideos([FromQuery] string? search, [FromQuery] int start = 0, [FromQuery] int count = 15, CancellationToken ct = default) =>
+        ListAsync(null, search, start, count, ct);
+
+    [HttpHead("search/videos")]
+    public Task<IActionResult> SearchVideosHead([FromQuery] string? search, [FromQuery] int start = 0, [FromQuery] int count = 15, CancellationToken ct = default) => SearchVideos(search, start, count, ct);
+
+    [HttpGet("search/video-channels")]
+    public async Task<IActionResult> SearchChannels([FromQuery] string? search, CancellationToken ct)
+    {
+        var account = await AccountAsync(ct);
+        var channels = new List<object>();
+        foreach (var folderId in (await catalogue.PublishedAsync(ct)).Select(v => v.FolderId).OfType<Guid>().Distinct())
+        {
+            var channel = await ChannelOfAsync(folderId, ct);
+            if (string.IsNullOrWhiteSpace(search) || channel.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
+            {
+                channels.Add(PeerTubeShapes.ChannelJson(channel, account, Host));
+            }
+        }
+
+        return Ok(new { total = channels.Count, data = channels });
+    }
+
+    [HttpHead("search/video-channels")]
+    public Task<IActionResult> SearchChannelsHead([FromQuery] string? search, CancellationToken ct) => SearchChannels(search, ct);
+
+    [HttpGet("search/video-playlists")]
+    public IActionResult SearchPlaylists() => Ok(NoItems);
+
+    [HttpHead("search/video-playlists")]
+    public IActionResult SearchPlaylistsHead() => SearchPlaylists();
+
+    // The catalogue, optionally one channel's and optionally searched; every sort the clients know is newest first.
+    private async Task<IActionResult> ListAsync(Guid? folderId, string? search, int start, int count, CancellationToken ct)
+    {
+        var account = await AccountAsync(ct);
+        var videos = (await catalogue.PublishedAsync(ct))
+            .Where(v => folderId is null || v.FolderId == folderId)
+            .Where(v => string.IsNullOrWhiteSpace(search)
+                || v.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || v.Description.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || v.Tags.Any(t => t.Contains(search, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+        var items = new List<object>();
+        foreach (var video in videos)
+        {
+            items.Add(PeerTubeShapes.VideoItem(video, await ChannelAsync(video, ct), account, Host));
+        }
+
+        return Ok(PeerTubeShapes.Page(items, start, count));
+    }
+
+    private string Host => Request.Host.Host;
+
+    private bool IsOurAccount(string name) => name.Split('@')[0] == PeerTubeShapes.AccountName(caller.TenantId);
+
+    private async Task<Account> AccountAsync(CancellationToken ct)
+    {
+        var name = await archive.GetSettingAsync(TubeSettings.NameKey, ct);
+        var description = await archive.GetSettingAsync(TubeSettings.DescriptionKey, ct);
+        return new Account(caller.TenantId, string.IsNullOrWhiteSpace(name) ? Host : name.Trim(), description?.Trim() ?? string.Empty);
+    }
+
+    private Task<Channel> ChannelAsync(PublishedVideo video, CancellationToken ct) =>
+        video.FolderId is { } folderId ? ChannelOfAsync(folderId, ct) : Task.FromResult(new Channel(Guid.Empty, "Videos"));
+
+    // The folder's name when the module's principal may see it; the channel's handle still works without.
+    private async Task<Channel> ChannelOfAsync(Guid folderId, CancellationToken ct) =>
+        new(folderId, (await archive.GetDocumentAsync(folderId, ct))?.Name ?? "Videos");
+
+    private async Task<Channel?> FolderAsync(string name, CancellationToken ct)
+    {
+        var bare = name.Split('@')[0];
+        if (!bare.StartsWith("f-", StringComparison.Ordinal) || !Guid.TryParseExact(bare[2..], "N", out var folderId))
+        {
+            return null;
+        }
+
+        return (await catalogue.PublishedAsync(ct)).Any(v => v.FolderId == folderId) ? await ChannelOfAsync(folderId, ct) : null;
+    }
+
+    private static string ExtensionOf(string? documentName)
+    {
+        var extension = Path.GetExtension(documentName ?? string.Empty).TrimStart('.').ToLowerInvariant();
+        return Doors.FilesController.ContentTypeOf(extension) is null ? "mp4" : extension;
+    }
+}
