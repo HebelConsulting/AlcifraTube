@@ -1,0 +1,74 @@
+# CI for the tube module — standalone by design, and the same shape as the flight-school module's.
+#
+# The module is built exactly as a third party would: against the PUBLISHED core ABI from GitHub Packages
+# (core ADRs 0751/0834), never a ProjectReference into the core. So this workflow needs no access to the core
+# repository, no Docker and no Chrome — a plain restore/build/test on a stock runner.
+#
+# It did not exist until 2026-09-30, which is worth recording rather than quietly fixing: the module's 47
+# tests ran only when somebody ran them locally, every PR merged unverified, and `NuGet.config` already
+# carried a comment asserting "CI authenticates `github` with its GITHUB_TOKEN" — a claim about a workflow
+# that was not there. A repository whose docs describe its CI is exactly the one nobody thinks to check.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: "10.0.x"
+
+      # Restore. The core ABI comes from nuget.org, the published package (NuGet.config), so no source needs a token.
+      - name: Restore
+        run: dotnet restore
+
+      # The ABI restored at exactly the version the project names: a pin nobody reads is how a module drifts from the
+      # contract it claims to build against.
+      - name: ABI restored at the pinned version
+        run: |
+          set -euo pipefail
+          ref=$(grep -oE 'Alcifra\.ModuleAbi" Version="[0-9]+\.[0-9]+\.[0-9]+"' src/Alcifra.Tube/Alcifra.Tube.csproj | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          nupkg=$(find ~/.nuget/packages/alcifra.moduleabi -iname "alcifra.moduleabi.$ref.nupkg" 2>/dev/null | head -1)
+          if [ -z "$nupkg" ]; then
+            echo "::error::Alcifra.ModuleAbi $ref did not restore."
+            exit 1
+          fi
+          echo "ABI check passed: Alcifra.ModuleAbi $ref restored ($nupkg)."
+
+      # The vulnerable-dependency gate (core ADR 0379). It exists because NU19xx is deliberately excluded
+      # from TreatWarningsAsErrors in Directory.Build.props — so a freshly-published advisory cannot break
+      # every compile mid-task — and that trade is only safe while something ELSE owns the blocking. This
+      # repository carried the exclusion with nothing owning it and no CI at all, so a high-severity advisory
+      # would not even have scrolled past a log. Flight school hit exactly this (its #70), spotted by eye.
+      - name: Vulnerable dependency scan
+        run: |
+          set -euo pipefail
+          dotnet list package --vulnerable --include-transitive --format json > vuln.json
+          count=$(jq '[.projects[].frameworks[]? | ((.topLevelPackages // []) + (.transitivePackages // []))[] | select((.vulnerabilities // []) | length > 0)] | length' vuln.json)
+          if [ "$count" -gt 0 ]; then
+            echo "::error::Found $count vulnerable package reference(s) — pin to a fixed version:"
+            jq -r '.projects[] | .path as $p | (.frameworks[]? | ((.topLevelPackages // []) + (.transitivePackages // []))[] | select((.vulnerabilities // []) | length > 0) | "\($p | split("/") | last)  \(.id) \(.resolvedVersion)  \(.vulnerabilities[].severity)  \(.vulnerabilities[].advisoryurl)")' vuln.json | sort -u
+            exit 1
+          fi
+          echo "No vulnerable dependencies."
+
+      # Advisory only: a deprecated package is worth surfacing but is not a security failure.
+      - name: Deprecated dependency check (advisory)
+        continue-on-error: true
+        run: dotnet list package --deprecated --include-transitive
+
+      - name: Build (warnings are errors)
+        run: dotnet build --no-restore -c Release
+
+      - name: Test
+        run: dotnet test --no-build -c Release --verbosity normal

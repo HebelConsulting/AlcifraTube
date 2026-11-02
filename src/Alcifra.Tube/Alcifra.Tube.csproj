@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <AssemblyName>Alcifra.Tube</AssemblyName>
+    <RootNamespace>Alcifra.Tube</RootNamespace>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Alcifra.Tube.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\manual\Alcifra-Tube-Module-Manual.pdf" LogicalName="Alcifra.Tube.Manual.pdf" />
+  </ItemGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Pinned exactly, never floating (core ADR 0789). -->
+    <PackageReference Include="Alcifra.ModuleAbi" Version="1.28.0" />
+  </ItemGroup>
+</Project>

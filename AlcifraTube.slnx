@@ -1,0 +1,4 @@
+<Solution>
+  <Folder Name="/src/"><Project Path="src/Alcifra.Tube/Alcifra.Tube.csproj" /></Folder>
+  <Folder Name="/tests/"><Project Path="tests/Alcifra.Tube.Tests/Alcifra.Tube.Tests.csproj" /></Folder>
+</Solution>
