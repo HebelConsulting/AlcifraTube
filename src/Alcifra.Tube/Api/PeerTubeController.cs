@@ -29,6 +29,22 @@ public sealed class PeerTubeController(VideoCatalogue catalogue, VideoDirectory 
     [HttpHead("config")]
     public Task<IActionResult> ConfigHead(CancellationToken ct) => Config(ct);
 
+    [HttpGet("config/about")]
+    public async Task<IActionResult> About(CancellationToken ct)
+    {
+        var account = await AccountAsync(ct);
+        return Ok(PeerTubeShapes.About(account.Name, account.Description));
+    }
+
+    [HttpHead("config/about")]
+    public Task<IActionResult> AboutHead(CancellationToken ct) => About(ct);
+
+    [HttpGet("server/stats")]
+    public async Task<IActionResult> Stats(CancellationToken ct) => Ok(PeerTubeShapes.Stats((await catalogue.PublishedAsync(ct)).Count));
+
+    [HttpHead("server/stats")]
+    public Task<IActionResult> StatsHead(CancellationToken ct) => Stats(ct);
+
     [HttpGet("videos")]
     public Task<IActionResult> Videos([FromQuery] int start = 0, [FromQuery] int count = 15, CancellationToken ct = default) => ListAsync(null, null, start, count, ct);
 

@@ -18,18 +18,109 @@ public static class PeerTubeShapes
     public static string ChannelName(Guid folderId) => $"f-{folderId:N}";
     public static string AccountName(Guid tenantId) => $"t-{tenantId:N}";
 
-    public static object Config(string name, string description) => new
+    /// <summary>
+    /// The version reported to clients: the PeerTube app refuses a server below 7.2.0 ("too old"; its PEERTUBE_MIN_VERSION,
+    /// app 2.3.0). The features it gates above that (7.3, 8.0) stay off. The suffix says whose server this is; clients strip it.
+    /// </summary>
+    public const string ServerVersion = "7.2.0-alcifra";
+
+    // Dates a tenant and a folder do not carry here, for the clients that require them on an account and a channel.
+    private const string UnknownDate = "1970-01-01T00:00:00.000Z";
+
+    /// <summary>
+    /// The instance's configuration. The app parses it all or fails, so every section it requires is here, saying what is
+    /// true of this read-only server: no sign-up, upload, import, live or federation search.
+    /// </summary>
+    public static object Config(string name, string description)
     {
-        instance = new { name, shortDescription = description, description, isNSFW = false, defaultNSFWPolicy = "do_not_list", customizations = new { javascript = string.Empty, css = string.Empty } },
-        serverVersion = "6.0.0-alcifra",
-        plugin = new { registered = Array.Empty<object>() },
-        theme = new { registered = Array.Empty<object>(), @default = "default" },
-        transcoding = new { enabledResolutions = Array.Empty<int>(), hls = new { enabled = false }, webVideos = new { enabled = false } },
-        tracker = new { enabled = false },
-        search = new { remoteUri = new { users = false, anonymous = false }, searchIndex = new { enabled = false } },
-        signup = new { allowed = false },
-        import_ = new { videos = new { http = new { enabled = false }, torrent = new { enabled = false } } },
+        var noFile = new { size = new { max = 0 }, extensions = Array.Empty<string>() };
+        var off = new { enabled = false };
+        return new
+        {
+            serverVersion = ServerVersion,
+            client = new
+            {
+                videos = new { miniature = new { preferAuthorDisplayName = false }, resumableUpload = new { maxChunkSize = 0 } },
+                menu = new { login = new { redirectOnSingleExternalAuth = false } },
+            },
+            instance = new
+            {
+                name,
+                shortDescription = description,
+                description,
+                isNSFW = false,
+                defaultNSFWPolicy = "do_not_list",
+                defaultClientRoute = "/videos/browse",
+                customizations = new { javascript = string.Empty, css = string.Empty },
+            },
+            plugin = new
+            {
+                registered = Array.Empty<object>(),
+                registeredExternalAuths = Array.Empty<object>(),
+                registeredIdAndPassAuths = Array.Empty<object>(),
+            },
+            theme = new { registered = Array.Empty<object>(), @default = "default" },
+            transcoding = new { enabledResolutions = Array.Empty<int>(), hls = off, webVideos = off },
+            tracker = off,
+            search = new
+            {
+                remoteUri = new { users = false, anonymous = false },
+                searchIndex = new { enabled = false, url = string.Empty, disableLocalSearch = false, isDefaultSearch = false },
+            },
+            signup = new { allowed = false, allowedForCurrentIP = false, requiresEmailVerification = false, minimumAge = 0 },
+            avatar = new { file = noFile },
+            banner = new { file = noFile },
+            video = new { image = noFile, file = new { extensions = Array.Empty<string>() } },
+            videoCaption = new { file = noFile },
+            user = new { videoQuota = 0, videoQuotaDaily = 0 },
+            import = new { videos = new { http = off, torrent = off }, videoChannelSynchronization = off, users = off },
+            live = new
+            {
+                enabled = false,
+                allowReplay = false,
+                latencySetting = off,
+                maxDuration = 0,
+                maxInstanceLives = 0,
+                maxUserLives = 0,
+                transcoding = new { enabled = false, remoteRunners = off, enabledResolutions = Array.Empty<int>(), profile = "default", availableProfiles = Array.Empty<string>() },
+                rtmp = new { port = 0 },
+            },
+            defaults = new
+            {
+                publish = new { downloadEnabled = true, commentsPolicy = 2, privacy = PrivacyPublic },
+                p2p = new { webapp = off, embed = off },
+                player = new { autoPlay = false },
+            },
+            storyboards = off,
+            views = new { videos = new { watchingInterval = new { users = 5000 } } },
+        };
+    }
+
+    /// <summary>The instance's about page: its name and description, the rest empty. The app needs it to switch to a server.</summary>
+    public static object About(string name, string description) => new
+    {
+        instance = new
+        {
+            name,
+            shortDescription = description,
+            description,
+            terms = string.Empty,
+            codeOfConduct = string.Empty,
+            hardwareInformation = string.Empty,
+            creationReason = string.Empty,
+            moderationInformation = string.Empty,
+            administrator = string.Empty,
+            maintenanceLifetime = string.Empty,
+            businessModel = string.Empty,
+            languages = Array.Empty<string>(),
+            categories = Array.Empty<int>(),
+            banners = Array.Empty<object>(),
+            avatars = Array.Empty<object>(),
+        },
     };
+
+    /// <summary>The server's numbers, of which only the published videos are known; views and users are not counted here.</summary>
+    public static object Stats(int publishedVideos) => new { totalVideos = publishedVideos, totalLocalVideos = publishedVideos, totalUsers = 0, totalVideoViews = 0, totalLocalVideoViews = 0 };
 
     public static object VideoItem(PublishedVideo video, Channel channel, Account account, string host)
     {
@@ -55,9 +146,9 @@ public static class PeerTubeShapes
             thumbnailPath = video.ThumbnailId is null ? null : $"/files/{video.Id:D}/thumbnail",
             previewPath = video.ThumbnailId is null ? null : $"/files/{video.Id:D}/thumbnail",
             embedPath = $"/videos/embed/{video.Id:D}",
-            createdAt = Stamp(video.PublishedAt),
-            updatedAt = Stamp(video.PublishedAt),
-            publishedAt = Stamp(video.PublishedAt),
+            createdAt = Stamp(video.PublishedAt) ?? UnknownDate,
+            updatedAt = Stamp(video.PublishedAt) ?? UnknownDate,
+            publishedAt = Stamp(video.PublishedAt) ?? UnknownDate,
             originallyPublishedAt = (string?)null,
             isLive = false,
             account = AccountJson(account, host),
@@ -88,6 +179,7 @@ public static class PeerTubeShapes
         {
             description = video.Description,
             support = (string?)null,
+            blacklisted = false,
             tags = video.Tags,
             commentsEnabled = false,
             downloadEnabled = true,
@@ -130,6 +222,8 @@ public static class PeerTubeShapes
             isLocal = true,
             followersCount = 0,
             followingCount = 0,
+            createdAt = UnknownDate,
+            updatedAt = UnknownDate,
             avatars = Array.Empty<object>(),
             banners = Array.Empty<object>(),
             ownerAccount = AccountJson(account, host),
@@ -150,6 +244,8 @@ public static class PeerTubeShapes
             isLocal = true,
             followersCount = 0,
             followingCount = 0,
+            createdAt = UnknownDate,
+            updatedAt = UnknownDate,
             avatars = Array.Empty<object>(),
             banners = Array.Empty<object>(),
         };
