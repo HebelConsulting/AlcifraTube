@@ -68,7 +68,13 @@ public class PeerTubeApiTests
         Assert.Equal("Original", file.GetProperty("resolution").GetProperty("label").GetString());
         Assert.Equal("The opening", detail.GetProperty("description").GetString());
         Assert.Equal(["keynote", "2026"], detail.GetProperty("tags").EnumerateArray().Select(t => t.GetString()));
-        Assert.Equal(1, detail.GetProperty("item").GetProperty("privacy").GetProperty("id").GetInt32());
+        // One flat object, as PeerTube's VideoDetails extends Video: NewPipe reads the name beside the files.
+        Assert.Equal(1, detail.GetProperty("privacy").GetProperty("id").GetInt32());
+        Assert.Equal("Opening talk.mp4", detail.GetProperty("name").GetString());
+        Assert.Equal(Clip.ToString("D"), detail.GetProperty("uuid").GetString());
+        Assert.Equal(1800, detail.GetProperty("duration").GetInt32());
+        Assert.Equal("t-" + Tenant.ToString("N"), detail.GetProperty("account").GetProperty("name").GetString());
+        Assert.False(detail.TryGetProperty("item", out _));
         Assert.Empty(detail.GetProperty("streamingPlaylists").EnumerateArray());
         Assert.IsType<NotFoundResult>(await api.Video(Guid.NewGuid(), CancellationToken.None));
         Assert.Equal("The opening", Json(await api.Description(Clip, CancellationToken.None)).GetProperty("description").GetString());

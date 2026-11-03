@@ -18,11 +18,11 @@ internal sealed class StubArchive(IReadOnlyList<ModuleDocument> documents, IRead
     public Task SetFieldListAsync(Guid documentId, string fieldName, IReadOnlyList<string> values, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task CreateReferenceAsync(Guid targetDocumentId, Guid intoFolderId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task RenameDocumentAsync(Guid documentId, string name, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task<Guid> StageContentAsync( Guid parentFolderId, Guid maskId, string name, byte[] content, string extension, DateTimeOffset expiresAt, IReadOnlyDictionary<string, string>? fields = null, Guid? replaceDocumentId = null, DateOnly? documentDate = null, TimeOnly? documentTime = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task<Guid> CreateContentDocumentAsync( Guid parentFolderId, Guid maskId, string name, byte[] content, string extension, IReadOnlyDictionary<string, string>? fields = null, Guid? replaceDocumentId = null, DateOnly? documentDate = null, TimeOnly? documentTime = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Task<Guid> StageContentAsync(Guid parentFolderId, Guid maskId, string name, byte[] content, string extension, DateTimeOffset expiresAt, IReadOnlyDictionary<string, string>? fields = null, Guid? replaceDocumentId = null, DateOnly? documentDate = null, TimeOnly? documentTime = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Task<Guid> CreateContentDocumentAsync(Guid parentFolderId, Guid maskId, string name, byte[] content, string extension, IReadOnlyDictionary<string, string>? fields = null, Guid? replaceDocumentId = null, DateOnly? documentDate = null, TimeOnly? documentTime = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task ReplaceContentAsync(Guid documentId, byte[] content, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<bool> IsOfferedAsync(Guid resourceDocumentId, DateTimeOffset startsAtUtc, DateTimeOffset endsAtUtc, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task<bool> IsFreeAsync( Guid resourceDocumentId, DateTimeOffset startsAt, DateTimeOffset endsAt, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Task<bool> IsFreeAsync(Guid resourceDocumentId, DateTimeOffset startsAt, DateTimeOffset endsAt, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 }
 
 

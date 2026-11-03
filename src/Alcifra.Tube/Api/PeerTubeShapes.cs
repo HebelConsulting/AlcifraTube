@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Alcifra.Tube.Module;
 
 namespace Alcifra.Tube.Api;
@@ -63,13 +65,27 @@ public static class PeerTubeShapes
         };
     }
 
-    public static object VideoDetail(PublishedVideo video, Channel channel, Account account, string host, string extension)
+    /// <summary>
+    /// A video's details are its list item's fields and the detail-only ones in ONE object, as PeerTube's VideoDetails
+    /// extends Video: a client reads <c>name</c> and <c>channel</c> beside <c>files</c>. Nested under a property of their
+    /// own, NewPipe found no name and played nothing (kiosk, 2026-11-03).
+    /// </summary>
+    public static JsonObject VideoDetail(PublishedVideo video, Channel channel, Account account, string host, string extension)
+    {
+        var detail = JsonSerializer.SerializeToNode(VideoItem(video, channel, account, host))!.AsObject();
+        foreach (var (name, value) in JsonSerializer.SerializeToNode(DetailOnly(video, host, extension))!.AsObject().ToList())
+        {
+            detail[name] = value?.DeepClone();
+        }
+
+        return detail;
+    }
+
+    private static object DetailOnly(PublishedVideo video, string host, string extension)
     {
         var origin = $"https://{host}";
-        var item = VideoItem(video, channel, account, host);
         return new
         {
-            item,
             description = video.Description,
             support = (string?)null,
             tags = video.Tags,
