@@ -29,7 +29,9 @@ public static class PeerTubeShapes
 
     /// <summary>
     /// The instance's configuration. The app parses it all or fails, so every section it requires is here, saying what is
-    /// true of this read-only server: no sign-up, upload, import, live or federation search.
+    /// true of this read-only server: no sign-up, upload, import, live or federation search. A section it does NOT require
+    /// stays out: once present the app parses it too, and a partial <c>transcoding</c> or <c>theme</c> made it refuse the
+    /// server ("type 'Null' is not a subtype of type 'Map'", 2026-11-03).
     /// </summary>
     public static object Config(string name, string description)
     {
@@ -59,9 +61,6 @@ public static class PeerTubeShapes
                 registeredExternalAuths = Array.Empty<object>(),
                 registeredIdAndPassAuths = Array.Empty<object>(),
             },
-            theme = new { registered = Array.Empty<object>(), @default = "default" },
-            transcoding = new { enabledResolutions = Array.Empty<int>(), hls = off, webVideos = off },
-            tracker = off,
             search = new
             {
                 remoteUri = new { users = false, anonymous = false },
