@@ -38,6 +38,7 @@ public sealed class TubeModule : IIndustryModule
     public void ConfigureServices(IServiceCollection services)
     {
         services.AddScoped<Catalogue.VideoCatalogue>();
+        services.AddScoped<Catalogue.VideoDirectory>();
         services.AddSingleton<Catalogue.EncryptionWarnings>();
     }
 }
