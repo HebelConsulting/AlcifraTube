@@ -144,6 +144,13 @@ public class PeerTubeApiTests
     public async Task The_configuration_carries_every_path_the_app_requires(string path) =>
         Assert.NotEqual(JsonValueKind.Null, At(Json(await Host(Seed()).Config(CancellationToken.None)), path).ValueKind);
 
+    // Optional in the app's model, so absent is fine; present, they must be complete, and the app refused a partial one.
+    [Theory]
+    [InlineData("transcoding")]
+    [InlineData("theme")]
+    public async Task The_configuration_leaves_out_the_optional_sections_it_cannot_fill(string section) =>
+        Assert.False(Json(await Host(Seed()).Config(CancellationToken.None)).TryGetProperty(section, out _), section);
+
     [Fact]
     public async Task The_reported_version_passes_the_apps_minimum()
     {
