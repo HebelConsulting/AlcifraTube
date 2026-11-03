@@ -15,17 +15,29 @@
 
 = What the module does
 
-A video is a document in your archive wearing the *Video* mask. Set its *Published* field to `yes` and PeerTube clients
-play it from your video host, streamed straight from storage; set it back to `no` and it is gone from the clients at
-once. The folder the video is in is its channel. Whoever may edit the video may publish it.
+A *Tube Channel* is a folder that clients show as one channel, and a repository can hold several. A video is a document
+wearing the *Video* mask. Prepare it anywhere; it is offered only through a channel, by sitting in one or by a reference
+placed in one, so one video can be in several channels. With its *Published* field at `yes`, PeerTube clients play it from
+your video host, streamed straight from storage; set it back to `no`, or remove it from the channel, and it is gone from
+the clients at once. Outside every channel a video is shown nowhere, whatever *Published* says.
+
+Publishing takes two rights: editing the video, and creating in the channel. In the clients' overview a video appears once
+per channel it is in; opening one names the channel it sits in, else the one that referenced it first.
 
 = Setting it up
 
 + Under *Modules ▸ Tube*, enter the *Video host* (e.g. `video.example.com`) your proxy sends to the installation's
   `peertube` prefix, and the instance's name and description clients show.
-+ File a video (an MP4 plays everywhere) in any folder, give it the *Video* mask, fill *Description* and, when you release
-  it, *Published* = `yes` and *Published at* (the catalogue lists newest first). A *Thumbnail* is the id of an image
-  document; *Duration seconds*, *Language* and *Tags* are shown by clients.
++ Create a folder with the *Tube Channel* mask. It holds videos and their thumbnails, and references to them. Its
+  *Description* is shown by clients.
++ File a video in the channel or anywhere else, with the *Video* mask: `.mp4`, `.m4v`, `.webm`, `.mov`, `.mkv` or `.ogv`.
+  An MP4 plays everywhere; other types depend on the client, because files play as stored. Fill *Description* and, when you
+  release it, *Published* = `yes` and *Published at* (the catalogue lists newest first). *Duration seconds*, *Language* and
+  *Tags* are shown by clients.
++ A *Thumbnail* points at a document with the *Video Thumbnail* mask (`.jpg`, `.jpeg`, `.png`, `.webp`), wherever it lies.
++ If the video was prepared outside a channel, place a reference to it in the channel. The module may then read that video
+  and its thumbnail, and nothing else in that place.
++ The module also needs read access to the channel itself: grant *Module: Tube* on the channel or on a folder above it.
 
 = Limits
 

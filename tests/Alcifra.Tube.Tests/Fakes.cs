@@ -12,7 +12,25 @@ internal sealed class StubArchive(IReadOnlyList<ModuleDocument> documents, IRead
     public Task<Uri?> GetDocumentContentUrlAsync(Guid documentId, TimeSpan ttl, string contentType, bool inline, CancellationToken cancellationToken = default) =>
         Task.FromResult(link?.Invoke(documentId) is { } u ? new Uri($"{u}?response-content-type={Uri.EscapeDataString(contentType)}&disposition={(inline ? "inline" : "attachment")}") : null);
     public Task<byte[]?> GetDocumentContentAsync(Guid documentId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task<IReadOnlyList<ModuleDocument>> GetChildrenAsync(Guid parentDocumentId, Guid maskId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Task<IReadOnlyList<ModuleDocument>> GetChildrenAsync(Guid parentDocumentId, Guid maskId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<ModuleDocument>>([.. documents.Where(d => d.ParentId == parentDocumentId && d.MaskId == maskId)]);
+
+    /// <summary>What is referenced where, in the order placed.</summary>
+    public List<(Guid Folder, Guid Target, DateTimeOffset At)> References { get; } = [];
+
+    public Task<IReadOnlyList<ModuleDocument>> GetReferencedAsync(Guid folderId, Guid maskId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<ModuleDocument>>([.. References
+            .Where(r => r.Folder == folderId)
+            .Select(r => (Reference: r, Document: documents.SingleOrDefault(d => d.Id == r.Target && d.MaskId == maskId)))
+            .Where(x => x.Document is not null)
+            .Select(x => x.Document! with { ReferencedAt = x.Reference.At })]);
+
+    /// <summary>What each document is stored as, independent of its name.</summary>
+    public Dictionary<Guid, string> StoredAs { get; } = [];
+
+    public Task<string?> GetDocumentContentExtensionAsync(Guid documentId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<string?>(StoredAs.GetValueOrDefault(documentId)
+            ?? Path.GetExtension(documents.FirstOrDefault(d => d.Id == documentId)?.Name ?? string.Empty).TrimStart('.').ToLowerInvariant());
     public Task<Guid> CreateDocumentAsync(Guid parentDocumentId, Guid maskId, string name, IReadOnlyDictionary<string, string>? fields = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task SetFieldsAsync(Guid documentId, IReadOnlyDictionary<string, string> fields, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task SetFieldListAsync(Guid documentId, string fieldName, IReadOnlyList<string> values, CancellationToken cancellationToken = default) => throw new NotSupportedException();
