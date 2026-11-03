@@ -15,7 +15,7 @@ namespace Alcifra.Tube.Api;
 [ApiController]
 [AllowAnonymous]
 [Route(TubeModule.RootPrefix + "/api/v1")]
-public sealed class PeerTubeController(VideoCatalogue catalogue, IModuleArchiveFacade archive, IModuleCallerContext caller) : ControllerBase
+public sealed class PeerTubeController(VideoCatalogue catalogue, VideoDirectory directory, IModuleCallerContext caller) : ControllerBase
 {
     private static readonly object NoItems = new { total = 0, data = Array.Empty<object>() };
 
@@ -44,8 +44,7 @@ public sealed class PeerTubeController(VideoCatalogue catalogue, IModuleArchiveF
         }
 
         var account = await AccountAsync(ct);
-        var document = await archive.GetDocumentAsync(videoId, ct);
-        return Ok(PeerTubeShapes.VideoDetail(video, await ChannelAsync(video, ct), account, Host, ExtensionOf(document?.Name)));
+        return Ok(PeerTubeShapes.VideoDetail(video, await ChannelAsync(video, ct), account, Host, await directory.FileExtensionAsync(videoId, ct)));
     }
 
     [HttpHead("videos/{videoId:guid}")]
@@ -188,19 +187,11 @@ public sealed class PeerTubeController(VideoCatalogue catalogue, IModuleArchiveF
 
     private bool IsOurAccount(string name) => name.Split('@')[0] == PeerTubeShapes.AccountName(caller.TenantId);
 
-    private async Task<Account> AccountAsync(CancellationToken ct)
-    {
-        var name = await archive.GetSettingAsync(TubeSettings.NameKey, ct);
-        var description = await archive.GetSettingAsync(TubeSettings.DescriptionKey, ct);
-        return new Account(caller.TenantId, string.IsNullOrWhiteSpace(name) ? Host : name.Trim(), description?.Trim() ?? string.Empty);
-    }
+    private Task<Account> AccountAsync(CancellationToken ct) => directory.AccountAsync(Host, ct);
 
-    private Task<Channel> ChannelAsync(PublishedVideo video, CancellationToken ct) =>
-        video.FolderId is { } folderId ? ChannelOfAsync(folderId, ct) : Task.FromResult(new Channel(Guid.Empty, "Videos"));
+    private Task<Channel> ChannelAsync(PublishedVideo video, CancellationToken ct) => directory.ChannelAsync(video, ct);
 
-    // The folder's name when the module's principal may see it; the channel's handle still works without.
-    private async Task<Channel> ChannelOfAsync(Guid folderId, CancellationToken ct) =>
-        new(folderId, (await archive.GetDocumentAsync(folderId, ct))?.Name ?? "Videos");
+    private Task<Channel> ChannelOfAsync(Guid folderId, CancellationToken ct) => directory.ChannelOfAsync(folderId, ct);
 
     private async Task<Channel?> FolderAsync(string name, CancellationToken ct)
     {
@@ -211,11 +202,5 @@ public sealed class PeerTubeController(VideoCatalogue catalogue, IModuleArchiveF
         }
 
         return (await catalogue.PublishedAsync(ct)).Any(v => v.FolderId == folderId) ? await ChannelOfAsync(folderId, ct) : null;
-    }
-
-    private static string ExtensionOf(string? documentName)
-    {
-        var extension = Path.GetExtension(documentName ?? string.Empty).TrimStart('.').ToLowerInvariant();
-        return Doors.FilesController.ContentTypeOf(extension) is null ? "mp4" : extension;
     }
 }

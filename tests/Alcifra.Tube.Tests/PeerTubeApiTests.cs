@@ -24,7 +24,7 @@ public class PeerTubeApiTests
         var catalogue = new VideoCatalogue(archive, caller, new EncryptionWarnings(), NullLogger<VideoCatalogue>.Instance);
         var http = new DefaultHttpContext();
         http.Request.Host = new HostString("video.example.test");
-        return new PeerTubeController(catalogue, archive, caller) { ControllerContext = new ControllerContext { HttpContext = http } };
+        return new PeerTubeController(catalogue, new VideoDirectory(archive, caller), caller) { ControllerContext = new ControllerContext { HttpContext = http } };
     }
 
     private static IReadOnlyList<ModuleDocument> Seed() =>
