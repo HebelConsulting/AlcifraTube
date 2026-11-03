@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <AssemblyName>Alcifra.Tube</AssemblyName>
     <RootNamespace>Alcifra.Tube</RootNamespace>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
