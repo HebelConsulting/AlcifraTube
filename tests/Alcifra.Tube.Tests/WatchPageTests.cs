@@ -22,7 +22,7 @@ public class WatchPageTests
     {
         IReadOnlyList<ModuleDocument> documents =
         [
-            new(Folder, null, "Talks & <b>news</b>", null, new Dictionary<string, string>()),
+            new(Folder, null, "Talks & <b>news</b>", TubeChannel.MaskId, new Dictionary<string, string>()),
             new(Clip, Folder, "Opening <script>alert(1)</script>.webm", Video.MaskId, new Dictionary<string, string>
             {
                 [Video.Published] = "yes", [Video.PublishedAt] = "2026-10-01T09:00:00Z", [Video.Description] = "Line one\n\"quoted\" & more",

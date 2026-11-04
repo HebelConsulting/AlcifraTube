@@ -214,7 +214,7 @@ public static class PeerTubeShapes
             id = channel.FolderId.GetHashCode() & 0x7fffffff,
             name = ChannelName(channel.FolderId),
             displayName = channel.Name,
-            description = (string?)null,
+            description = channel.Description,
             support = (string?)null,
             url = $"{origin}/video-channels/{ChannelName(channel.FolderId)}",
             host,
@@ -261,8 +261,8 @@ public static class PeerTubeShapes
     private static string Truncate(string text, int max) => text.Length <= max ? text : text[..max];
 }
 
-/// <summary>A channel is a folder (ADR 0002).</summary>
-public sealed record Channel(Guid FolderId, string Name);
+/// <summary>A channel is a folder wearing the Tube Channel mask (ADR 0006).</summary>
+public sealed record Channel(Guid FolderId, string Name, string? Description = null);
 
 /// <summary>The account is the tenant: named by its video host's settings.</summary>
 public sealed record Account(Guid TenantId, string Name, string Description);

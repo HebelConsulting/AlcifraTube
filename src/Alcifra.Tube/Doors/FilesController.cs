@@ -18,6 +18,14 @@ public sealed class FilesController(VideoCatalogue catalogue, IModuleArchiveFaca
 {
     public static readonly TimeSpan LinkLifetime = TimeSpan.FromMinutes(5);
 
+    private static readonly Dictionary<string, string> ImageTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["jpg"] = "image/jpeg",
+        ["jpeg"] = "image/jpeg",
+        ["png"] = "image/png",
+        ["webp"] = "image/webp",
+    };
+
     private static readonly Dictionary<string, string> ContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         ["mp4"] = "video/mp4",
@@ -25,6 +33,7 @@ public sealed class FilesController(VideoCatalogue catalogue, IModuleArchiveFaca
         ["webm"] = "video/webm",
         ["mov"] = "video/quicktime",
         ["mkv"] = "video/x-matroska",
+        ["ogv"] = "video/ogg",
     };
 
     /// <summary>The content type a player is told for a stored extension; null for one this module does not serve.</summary>
@@ -53,7 +62,8 @@ public sealed class FilesController(VideoCatalogue catalogue, IModuleArchiveFaca
             return NotFound();
         }
 
-        var link = await archive.GetDocumentContentUrlAsync(thumbnailId, LinkLifetime, "image/jpeg", inline: true, cancellationToken);
+        var contentType = ImageTypes.GetValueOrDefault(await archive.GetDocumentContentExtensionAsync(thumbnailId, cancellationToken) ?? string.Empty, "image/jpeg");
+        var link = await archive.GetDocumentContentUrlAsync(thumbnailId, LinkLifetime, contentType, inline: true, cancellationToken);
         return link is null ? NotFound() : Fresh(link);
     }
 

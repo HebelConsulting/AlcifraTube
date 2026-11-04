@@ -11,9 +11,10 @@ namespace Alcifra.Tube.Tests;
 public class FileDoorTests
 {
     private static readonly Guid Tenant = Guid.NewGuid();
+    private static readonly Guid Channel = Guid.NewGuid();
 
     private static ModuleDocument VideoDocument(Guid id, bool published, string? publishedAt = null, Guid? thumbnail = null) =>
-        new(id, Guid.NewGuid(), "Clip", Video.MaskId, new Dictionary<string, string>
+        new(id, Channel, "Clip", Video.MaskId, new Dictionary<string, string>
         {
             [Video.Published] = published ? "yes" : "no",
             [Video.PublishedAt] = publishedAt ?? string.Empty,
@@ -23,7 +24,7 @@ public class FileDoorTests
 
     private static (FilesController Door, VideoCatalogue Catalogue) Host(IReadOnlyList<ModuleDocument> documents, bool encrypts = false)
     {
-        var archive = new StubArchive(documents, new Dictionary<string, string>(), id => new Uri($"https://store.test/{id:N}"));
+        var archive = new StubArchive([new(Channel, null, "Talks", TubeChannel.MaskId, new Dictionary<string, string>()), .. documents], new Dictionary<string, string>(), id => new Uri($"https://store.test/{id:N}"));
         var catalogue = new VideoCatalogue(archive, new StubCaller(Tenant, encrypts), new EncryptionWarnings(), NullLogger<VideoCatalogue>.Instance);
         var door = new FilesController(catalogue, archive) { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() } };
         return (door, catalogue);

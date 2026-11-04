@@ -30,7 +30,7 @@ public class PeerTubeApiTests
 
     private static IReadOnlyList<ModuleDocument> Seed() =>
     [
-        new(Folder, null, "Talks", null, new Dictionary<string, string>()),
+        new(Folder, null, "Talks", TubeChannel.MaskId, new Dictionary<string, string>()),
         new(Clip, Folder, "Opening talk.mp4", Video.MaskId, new Dictionary<string, string>
         {
             [Video.Published] = "yes", [Video.PublishedAt] = "2026-10-01T09:00:00Z", [Video.Description] = "The opening", [Video.Tags] = "keynote, 2026", [Video.DurationSeconds] = "1800", [Video.Language] = "de",

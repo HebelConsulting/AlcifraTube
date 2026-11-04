@@ -21,14 +21,24 @@ public sealed class VideoDirectory(IModuleArchiveFacade archive, IModuleCallerCo
         video.FolderId is { } folderId ? ChannelOfAsync(folderId, ct) : Task.FromResult(new Channel(Guid.Empty, "Videos"));
 
     // The folder's name when the module's principal may see it; the channel's handle still works without.
-    public async Task<Channel> ChannelOfAsync(Guid folderId, CancellationToken ct) =>
-        new(folderId, (await archive.GetDocumentAsync(folderId, ct))?.Name ?? "Videos");
+    public async Task<Channel> ChannelOfAsync(Guid folderId, CancellationToken ct)
+    {
+        var folder = await archive.GetDocumentAsync(folderId, ct);
+        return new Channel(folderId, folder?.Name ?? "Videos", Described(folder?.Fields.GetValueOrDefault(TubeChannel.Description)));
+    }
 
-    /// <summary>The extension the file door serves the video under: the stored one when the door knows it, else mp4.</summary>
+    /// <summary>A channel as the API shows it.</summary>
+    public static Channel ChannelOf(ModuleDocument channel) =>
+        new(channel.Id, channel.Name, Described(channel.Fields.GetValueOrDefault(TubeChannel.Description)));
+
+    private static string? Described(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+
+    /// <summary>
+    /// The extension the file door serves the video under: what it is stored as, since a name proves nothing, else mp4.
+    /// </summary>
     public async Task<string> FileExtensionAsync(Guid videoId, CancellationToken ct)
     {
-        var name = (await archive.GetDocumentAsync(videoId, ct))?.Name;
-        var extension = Path.GetExtension(name ?? string.Empty).TrimStart('.').ToLowerInvariant();
+        var extension = await archive.GetDocumentContentExtensionAsync(videoId, ct) ?? string.Empty;
         return Doors.FilesController.ContentTypeOf(extension) is null ? "mp4" : extension;
     }
 }

@@ -73,6 +73,16 @@ public sealed class PeerTubeController(VideoCatalogue catalogue, VideoDirectory 
     [HttpHead("videos/{videoId:guid}/description")]
     public Task<IActionResult> DescriptionHead(Guid videoId, CancellationToken ct) => Description(videoId, ct);
 
+    // The official app asks for both on every video it opens. No comments here, and views are not counted (ADR 0004).
+    [HttpGet("videos/{videoId:guid}/comment-threads")]
+    public async Task<IActionResult> CommentThreads(Guid videoId, CancellationToken ct) => await catalogue.PublishedAsync(videoId, ct) is null ? NotFound() : Ok(NoItems);
+
+    [HttpHead("videos/{videoId:guid}/comment-threads")]
+    public Task<IActionResult> CommentThreadsHead(Guid videoId, CancellationToken ct) => CommentThreads(videoId, ct);
+
+    [HttpPost("videos/{videoId:guid}/views")]
+    public async Task<IActionResult> View(Guid videoId, CancellationToken ct) => await catalogue.PublishedAsync(videoId, ct) is null ? NotFound() : NoContent();
+
     [HttpGet("videos/{videoId:guid}/captions")]
     public async Task<IActionResult> Captions(Guid videoId, CancellationToken ct) => await catalogue.PublishedAsync(videoId, ct) is null ? NotFound() : Ok(NoItems);
 
@@ -135,9 +145,9 @@ public sealed class PeerTubeController(VideoCatalogue catalogue, VideoDirectory 
 
         var account = await AccountAsync(ct);
         var channels = new List<object>();
-        foreach (var folderId in (await catalogue.PublishedAsync(ct)).Select(v => v.FolderId).OfType<Guid>().Distinct())
+        foreach (var channel in await catalogue.ChannelsAsync(ct))
         {
-            channels.Add(PeerTubeShapes.ChannelJson(await ChannelOfAsync(folderId, ct), account, Host));
+            channels.Add(PeerTubeShapes.ChannelJson(VideoDirectory.ChannelOf(channel), account, Host));
         }
 
         return Ok(new { total = channels.Count, data = channels });
@@ -158,9 +168,8 @@ public sealed class PeerTubeController(VideoCatalogue catalogue, VideoDirectory 
     {
         var account = await AccountAsync(ct);
         var channels = new List<object>();
-        foreach (var folderId in (await catalogue.PublishedAsync(ct)).Select(v => v.FolderId).OfType<Guid>().Distinct())
+        foreach (var channel in (await catalogue.ChannelsAsync(ct)).Select(VideoDirectory.ChannelOf))
         {
-            var channel = await ChannelOfAsync(folderId, ct);
             if (string.IsNullOrWhiteSpace(search) || channel.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
             {
                 channels.Add(PeerTubeShapes.ChannelJson(channel, account, Host));
@@ -207,8 +216,6 @@ public sealed class PeerTubeController(VideoCatalogue catalogue, VideoDirectory 
 
     private Task<Channel> ChannelAsync(PublishedVideo video, CancellationToken ct) => directory.ChannelAsync(video, ct);
 
-    private Task<Channel> ChannelOfAsync(Guid folderId, CancellationToken ct) => directory.ChannelOfAsync(folderId, ct);
-
     private async Task<Channel?> FolderAsync(string name, CancellationToken ct)
     {
         var bare = name.Split('@')[0];
@@ -217,6 +224,6 @@ public sealed class PeerTubeController(VideoCatalogue catalogue, VideoDirectory 
             return null;
         }
 
-        return (await catalogue.PublishedAsync(ct)).Any(v => v.FolderId == folderId) ? await ChannelOfAsync(folderId, ct) : null;
+        return (await catalogue.ChannelsAsync(ct)).FirstOrDefault(c => c.Id == folderId) is { } channel ? VideoDirectory.ChannelOf(channel) : null;
     }
 }

@@ -4,8 +4,9 @@ using SimplArchive.ModuleAbi;
 namespace Alcifra.Tube.Module;
 
 /// <summary>
-/// The Video mask (ADR 0002): a video is a document wearing it, in any folder, its file under the module's own key
-/// segment. <i>Published</i> is the publish switch, an index edit; <i>Published at</i> orders the catalogue and is the
+/// The Video mask (ADR 0002, ADR 0006): a video is a document wearing it, prepared in any folder, its file under the
+/// module's own key segment. It is offered only through a <see cref="TubeChannel"/>, by sitting in one or being referenced
+/// from one. <i>Published</i> is the publish switch, an index edit; <i>Published at</i> orders the catalogue and is the
 /// editor's to fill (the core's projection hook may not write, so nothing stamps it).
 /// </summary>
 public static class Video
@@ -27,12 +28,15 @@ public static class Video
         new ModuleFieldSeed(Published, "Text"),
         new ModuleFieldSeed(PublishedAt, "DateTime"),
         new ModuleFieldSeed(Language, "Text"),
-        new ModuleFieldSeed(Thumbnail, "Text"),
+        new ModuleFieldSeed(Thumbnail, "DocumentReference"),
         new ModuleFieldSeed(DurationSeconds, "Number"),
         new ModuleFieldSeed(Tags, "Text", IsList: true),
     ])
     {
         ContentSegment = Segment,
+
+        // What the file door can announce to a player. We do not transcode, so what is filed is what clients must play.
+        AcceptedExtensions = ["mp4", "m4v", "webm", "mov", "mkv", "ogv"],
     };
 
     /// <summary>A document's fields as a video; null when it does not wear the mask.</summary>
@@ -51,6 +55,38 @@ public static class Video
             document.Fields.GetValueOrDefault(Language)?.Trim() is { Length: > 0 } l ? l : null, thumbnail, duration,
             document.Fields.GetValueOrDefault(Tags)?.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? []);
     }
+}
+
+/// <summary>
+/// A Tube Channel (ADR 0006): a folder advertised as one channel, so a repository can hold several. It holds videos and
+/// their thumbnails; a reference placed in it obeys that too, and a published video referenced from it is in the channel.
+/// </summary>
+public static class TubeChannel
+{
+    public static readonly Guid MaskId = Guid.Parse("7B3E0000-0000-4000-8000-000000000002");
+    public const string Description = "Description";
+
+    public static readonly ModuleMaskSeed Mask = new(MaskId, "Tube Channel", IsFolderMask: true, IsBookable: false,
+    [
+        new ModuleFieldSeed(Description, "Text"),
+    ],
+    AdmitsOnlyDeclaredChildren: true,
+    AdmittedChildren: [Video.MaskId, VideoThumbnail.MaskId])
+    {
+        ReferencesObeyAdmission = true,
+    };
+}
+
+/// <summary>A video's thumbnail photo (ADR 0006), prepared anywhere: the video's Thumbnail field names it.</summary>
+public static class VideoThumbnail
+{
+    public static readonly Guid MaskId = Guid.Parse("7B3E0000-0000-4000-8000-000000000003");
+
+    public static readonly ModuleMaskSeed Mask = new(MaskId, "Video Thumbnail", IsFolderMask: false, IsBookable: false, [])
+    {
+        ContentSegment = Video.Segment,
+        AcceptedExtensions = ["jpg", "jpeg", "png", "webp"],
+    };
 }
 
 /// <summary>A video as the catalogue and the API read it: a document's fields, nothing the module keeps itself.</summary>
