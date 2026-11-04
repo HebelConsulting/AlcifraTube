@@ -50,7 +50,7 @@ public class WatchPageTests
         var html = result.Content!;
         Assert.Contains($"""<video controls playsinline preload="metadata" src="https://video.example.test/files/{Clip:D}.webm" poster="https://video.example.test/files/{Clip:D}/thumbnail"></video>""", html, StringComparison.Ordinal);
         Assert.Contains("<html lang=\"de\">", html, StringComparison.Ordinal);
-        Assert.Contains("Talks &amp; &lt;b&gt;news&lt;/b&gt; · Kristall Tube", html, StringComparison.Ordinal);
+        Assert.Contains($"""<a href="/c/f-{Folder:N}">Talks &amp; &lt;b&gt;news&lt;/b&gt;</a> · <a href="/">Kristall Tube</a>""", html, StringComparison.Ordinal);
         Assert.Contains("""<time datetime="2026-10-01T09:00:00Z">1 October 2026</time>""", html, StringComparison.Ordinal);
         Assert.Contains("Line one\n&quot;quoted&quot; &amp; more", html, StringComparison.Ordinal);
         Assert.Contains("<li>keynote</li><li>2026</li>", html, StringComparison.Ordinal);
