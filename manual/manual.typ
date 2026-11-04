@@ -39,6 +39,17 @@ per channel it is in; opening one names the channel it sits in, else the one tha
   and its thumbnail, and nothing else in that place.
 + The module also needs read access to the channel itself: grant *Module: Tube* on the channel or on a folder above it.
 
+= The Tube tab
+
+Where the module is active, the clients gain a *Tube* tab or tile. It lists the channels you can see, each with a checkbox
+and a lock if you can't add to it, and a filter over the videos. Your own rights decide what shows: published videos, and
+any video you may edit, marked as a draft.
+
+Where your rights allow, you can publish or unpublish a video, edit its details, place it in another channel, and remove it
+from a channel that only references it, which never deletes the video. Channels are created, renamed and deleted in the
+Repositories tree. The web and the phone play in the tab; the desktop opens the watch page in the browser, so a draft has
+nothing to open there. A tenant that encrypts at rest sees the tab empty, with a line saying why.
+
 = Limits
 
 The module serves tenants that do not encrypt content at rest: a video's bytes go straight from storage to the player,
