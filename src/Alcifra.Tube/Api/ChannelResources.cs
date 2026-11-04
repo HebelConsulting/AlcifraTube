@@ -12,7 +12,7 @@ public sealed class ChannelShelfResource : HypermediaResource
 }
 
 /// <summary>One channel. <see cref="CanWrite"/> false is the lock: nothing can be added to it or removed from it.</summary>
-public sealed class ChannelShelfItem
+public sealed class ChannelShelfItem : HypermediaResource
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
