@@ -27,6 +27,7 @@ public sealed class ChannelShelf(IModuleArchiveFacade archive, IModuleDocumentRi
             {
                 shelf.Items.Add(new ChannelShelfItem
                 {
+                    Links = [DocumentLink(channel.Id)],
                     Id = channel.Id,
                     Name = channel.Name,
                     Description = VideoDirectory.ChannelOf(channel).Description,
@@ -39,10 +40,14 @@ public sealed class ChannelShelf(IModuleArchiveFacade archive, IModuleDocumentRi
         return shelf;
     }
 
+    // A client changes things through the core's rels, and can follow them only from the resource (core ADR 0543): the row
+    // hands it that address, so it never composes one from an id.
+    private static Link DocumentLink(Guid documentId) => new("document", $"/api/documents/{documentId:D}", "GET");
+
     // A rel only where following it can work (ADR 0543): the file for who may read it, the picture for a video that names one.
     private static List<Link> LinksOf(PublishedVideo video, ModuleDocumentRightsAnswer onVideo)
     {
-        var links = new List<Link>();
+        var links = new List<Link> { DocumentLink(video.Id) };
         if (onVideo.CanReadContent)
         {
             links.Add(new Link("play", $"/{ChannelsController.Base}/videos/{video.Id:D}/play", "GET"));

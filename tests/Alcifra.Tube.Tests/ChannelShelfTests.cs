@@ -155,6 +155,7 @@ public class ChannelShelfTests
         var video = In(await Shelf().ReadAsync(CancellationToken.None), Open, Live);
         Assert.Contains(video.Links, l => l.Rel == "play" && l.Href == $"/{ChannelsController.Base}/videos/{Live:D}/play");
         Assert.DoesNotContain(video.Links, l => l.Rel == "thumbnail");
+        Assert.Contains(video.Links, l => l.Rel == "document" && l.Href == $"/api/documents/{Live:D}");
     }
 
     [Fact]
