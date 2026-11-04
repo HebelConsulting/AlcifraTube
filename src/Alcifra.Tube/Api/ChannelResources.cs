@@ -22,7 +22,7 @@ public sealed class ChannelShelfItem
 }
 
 /// <summary>One video in one channel, with what this person may do to it; a video in two channels is listed in both.</summary>
-public sealed class ChannelShelfVideo
+public sealed class ChannelShelfVideo : HypermediaResource
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
@@ -44,4 +44,11 @@ public sealed class ChannelShelfVideo
 
     /// <summary>The public watch page, when the video is published and the tenant named its video host.</summary>
     public string? WatchUrl { get; set; }
+}
+
+/// <summary>A short-lived address of a file, asked for when it is about to be shown, not when the list was read.</summary>
+public sealed class ContentLinkResource
+{
+    public string Url { get; set; } = string.Empty;
+    public string ContentType { get; set; } = string.Empty;
 }

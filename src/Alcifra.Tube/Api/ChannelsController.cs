@@ -28,4 +28,29 @@ public sealed class ChannelsController(ChannelShelf shelf) : ControllerBase
         await shelf.ReadAsync(cancellationToken);
         return Ok();
     }
+
+    [HttpGet("videos/{videoId:guid}/play")]
+    public async Task<ActionResult<ContentLinkResource>> Play(Guid videoId, CancellationToken cancellationToken) =>
+        Fresh(await shelf.PlayAsync(videoId, cancellationToken));
+
+    [HttpHead("videos/{videoId:guid}/play")]
+    public Task<ActionResult<ContentLinkResource>> PlayHead(Guid videoId, CancellationToken cancellationToken) => Play(videoId, cancellationToken);
+
+    [HttpGet("videos/{videoId:guid}/thumbnail")]
+    public async Task<ActionResult<ContentLinkResource>> Thumbnail(Guid videoId, CancellationToken cancellationToken) =>
+        Fresh(await shelf.ThumbnailAsync(videoId, cancellationToken));
+
+    [HttpHead("videos/{videoId:guid}/thumbnail")]
+    public Task<ActionResult<ContentLinkResource>> ThumbnailHead(Guid videoId, CancellationToken cancellationToken) => Thumbnail(videoId, cancellationToken);
+
+    private ActionResult<ContentLinkResource> Fresh(ContentLinkResource? link)
+    {
+        if (link is null)
+        {
+            return NotFound();
+        }
+
+        Response.Headers.CacheControl = "no-store";
+        return link;
+    }
 }
