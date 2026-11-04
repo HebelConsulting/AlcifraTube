@@ -45,6 +45,7 @@ public static class WatchPage
             video{width:100%;max-height:70vh;background:#000;border-radius:8px}
             h1{font-size:1.4rem;margin:12px 0 4px}
             .by{color:#6e6e73;margin:0 0 12px}
+            .by a{color:inherit}
             .text{white-space:pre-wrap}
             .tags{display:flex;flex-wrap:wrap;gap:6px;padding:0;list-style:none}
             .tags li{background:#f2f2f4;border-radius:999px;padding:2px 10px;font-size:.85rem}
@@ -57,7 +58,7 @@ public static class WatchPage
             """);
         page.Append(Player(file, poster)).Append('\n');
         page.Append($"<h1>{HtmlEncode(video.Name)}</h1>\n");
-        page.Append($"""<p class="by">{HtmlEncode(channel.Name)} · {HtmlEncode(account.Name)}{Date(video.PublishedAt)}</p>""").Append('\n');
+        page.Append($"""<p class="by">{ChannelLink(channel)} · <a href="/">{HtmlEncode(account.Name)}</a>{Date(video.PublishedAt)}</p>""").Append('\n');
         if (video.Description.Length > 0)
         {
             page.Append($"""<p class="text">{HtmlEncode(video.Description)}</p>""").Append('\n');
@@ -91,6 +92,11 @@ public static class WatchPage
 
             """;
     }
+
+    // A channel with no folder behind it has no page to link to.
+    private static string ChannelLink(Channel channel) => channel.FolderId == Guid.Empty
+        ? HtmlEncode(channel.Name)
+        : $"""<a href="{LandingPage.ChannelAddress(channel.FolderId)}">{HtmlEncode(channel.Name)}</a>""";
 
     private static string Head(PublishedVideo video, Account account, string title) => $"""
         <!doctype html>

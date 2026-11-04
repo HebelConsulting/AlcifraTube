@@ -25,7 +25,7 @@ public static class Video
     public static readonly ModuleMaskSeed Mask = new(MaskId, "Video", IsFolderMask: false, IsBookable: false,
     [
         new ModuleFieldSeed(Description, "Text"),
-        new ModuleFieldSeed(Published, "Text"),
+        new ModuleFieldSeed(Published, "Toggle"),
         new ModuleFieldSeed(PublishedAt, "DateTime"),
         new ModuleFieldSeed(Language, "Text"),
         new ModuleFieldSeed(Thumbnail, "DocumentReference"),

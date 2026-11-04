@@ -39,6 +39,16 @@ per channel it is in; opening one names the channel it sits in, else the one tha
   and its thumbnail, and nothing else in that place.
 + The module also needs read access to the channel itself: grant *Module: Tube* on the channel or on a folder above it.
 
+= The pages in a browser
+
+The video host's front page shows the latest videos, the newest in the upper left corner and the oldest in the lower right,
+24 to a page, each with its thumbnail and description. Each video links to its channel's page, which shows that channel's
+latest videos the same way. A video in two channels appears once for each. The front page links to a short FAQ on watching
+in a mobile app.
+
+The proxy in front of the video host has to pass `/`, `/c/` and `/faq` to the module as well, and each thumbnail counts
+against the limit on anonymous requests per address.
+
 = The Tube tab
 
 Where the module is active, the clients gain a *Tube* tab or tile. It lists the channels you can see, each with a checkbox
