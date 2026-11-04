@@ -52,7 +52,7 @@ public class ChannelShelfTests
             settings[TubeSettings.HostKey] = host;
         }
 
-        var archive = new StubArchive(documents, settings);
+        var archive = new StubArchive(documents, settings, id => new Uri($"https://storage.example.test/{id:D}"));
         var at = DateTimeOffset.Parse("2026-11-01T09:00:00Z");
         archive.References.Add((Open, Prepared, at));
         archive.References.Add((Locked, Prepared, at));
@@ -137,6 +137,24 @@ public class ChannelShelfTests
         var answer = await new ChannelsController(Shelf()).Get(CancellationToken.None);
         Assert.IsType<ActionResult<ChannelShelfResource>>(answer);
         Assert.Contains(answer.Value!.Links, l => l.Rel == "self" && l.Href == $"/{ChannelsController.Base}");
+    }
+
+    [Fact]
+    public async Task A_draft_plays_for_who_may_edit_it_and_nothing_plays_outside_the_shelf()
+    {
+        var shelf = Shelf();
+        Assert.Equal("video/mp4", (await shelf.PlayAsync(EditableDraft, CancellationToken.None))!.ContentType);
+        Assert.Null(await shelf.PlayAsync(ForeignDraft, CancellationToken.None));
+        Assert.Null(await shelf.PlayAsync(Secret, CancellationToken.None));
+        Assert.Null(await shelf.PlayAsync(Guid.NewGuid(), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task The_rows_advertise_play_only_to_who_may_read_the_file()
+    {
+        var video = In(await Shelf().ReadAsync(CancellationToken.None), Open, Live);
+        Assert.Contains(video.Links, l => l.Rel == "play" && l.Href == $"/{ChannelsController.Base}/videos/{Live:D}/play");
+        Assert.DoesNotContain(video.Links, l => l.Rel == "thumbnail");
     }
 
     [Fact]

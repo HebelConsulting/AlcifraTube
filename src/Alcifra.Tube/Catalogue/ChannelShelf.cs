@@ -39,6 +39,61 @@ public sealed class ChannelShelf(IModuleArchiveFacade archive, IModuleDocumentRi
         return shelf;
     }
 
+    // A rel only where following it can work (ADR 0543): the file for who may read it, the picture for a video that names one.
+    private static List<Link> LinksOf(PublishedVideo video, ModuleDocumentRightsAnswer onVideo)
+    {
+        var links = new List<Link>();
+        if (onVideo.CanReadContent)
+        {
+            links.Add(new Link("play", $"/{ChannelsController.Base}/videos/{video.Id:D}/play", "GET"));
+        }
+
+        if (video.ThumbnailId is not null && onVideo.CanSee)
+        {
+            links.Add(new Link("thumbnail", $"/{ChannelsController.Base}/videos/{video.Id:D}/thumbnail", "GET"));
+        }
+
+        return links;
+    }
+
+    /// <summary>The file's address for this person, or null: their rights decide, and only for a video in a channel they can see.</summary>
+    public async Task<ContentLinkResource?> PlayAsync(Guid videoId, CancellationToken cancellationToken)
+    {
+        if (!(await rights.GetAsync(videoId, cancellationToken)).CanReadContent || await InShelfAsync(videoId, cancellationToken) is null)
+        {
+            return null;
+        }
+
+        var extension = await archive.GetDocumentContentExtensionAsync(videoId, cancellationToken) ?? string.Empty;
+        return Doors.FilesController.ContentTypeOf(extension) is { } contentType
+            ? await LinkAsync(videoId, contentType, cancellationToken)
+            : null;
+    }
+
+    /// <summary>The picture's address, on the same terms: the person must be able to read the picture too.</summary>
+    public async Task<ContentLinkResource?> ThumbnailAsync(Guid videoId, CancellationToken cancellationToken)
+    {
+        if (await InShelfAsync(videoId, cancellationToken) is not { ThumbnailId: { } thumbnailId }
+            || !(await rights.GetAsync(thumbnailId, cancellationToken)).CanReadContent)
+        {
+            return null;
+        }
+
+        var extension = await archive.GetDocumentContentExtensionAsync(thumbnailId, cancellationToken) ?? string.Empty;
+        return Doors.FilesController.ImageTypeOf(extension) is { } contentType
+            ? await LinkAsync(thumbnailId, contentType, cancellationToken)
+            : null;
+    }
+
+    private async Task<ContentLinkResource?> LinkAsync(Guid documentId, string contentType, CancellationToken cancellationToken) =>
+        await archive.GetDocumentContentUrlAsync(documentId, Doors.FilesController.LinkLifetime, contentType, inline: true, cancellationToken) is { } link
+            ? new ContentLinkResource { Url = link.ToString(), ContentType = contentType }
+            : null;
+
+    // A video the person sees on this tab, whichever channel holds it.
+    private async Task<ChannelShelfVideo?> InShelfAsync(Guid videoId, CancellationToken cancellationToken) =>
+        (await ReadAsync(cancellationToken)).Items.SelectMany(c => c.Videos).FirstOrDefault(v => v.Id == videoId);
+
     private async Task<List<ChannelShelfVideo>> VideosAsync(Guid channelId, ModuleDocumentRightsAnswer onChannel, string? host, CancellationToken cancellationToken)
     {
         var sitting = await archive.GetChildrenAsync(channelId, Video.MaskId, cancellationToken);
@@ -53,6 +108,7 @@ public sealed class ChannelShelf(IModuleArchiveFacade archive, IModuleDocumentRi
                 var isReference = document.ParentId != channelId;
                 videos.Add(new ChannelShelfVideo
                 {
+                    Links = LinksOf(video, onVideo),
                     Id = video.Id,
                     Name = video.Name,
                     Description = video.Description,

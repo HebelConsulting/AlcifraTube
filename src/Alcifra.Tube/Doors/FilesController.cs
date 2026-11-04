@@ -39,6 +39,9 @@ public sealed class FilesController(VideoCatalogue catalogue, IModuleArchiveFaca
     /// <summary>The content type a player is told for a stored extension; null for one this module does not serve.</summary>
     public static string? ContentTypeOf(string extension) => ContentTypes.GetValueOrDefault(extension.TrimStart('.'));
 
+    /// <summary>The content type of a stored picture; null for a type this module does not serve.</summary>
+    public static string? ImageTypeOf(string extension) => ImageTypes.GetValueOrDefault(extension.TrimStart('.'));
+
     [HttpGet("{videoId:guid}.{extension}")]
     public async Task<IActionResult> Video(Guid videoId, string extension, CancellationToken cancellationToken)
     {
