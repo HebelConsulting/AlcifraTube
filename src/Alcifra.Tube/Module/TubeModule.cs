@@ -31,6 +31,9 @@ public sealed class TubeModule : IIndustryModule
     /// <summary>The PeerTube API and the file door, for anyone on the host the tenant named (ABI 1.28, core ADR 1038).</summary>
     public IReadOnlyList<AnonymousRootPrefix> AnonymousRootPrefixes { get; } = [new AnonymousRootPrefix(RootPrefix, TubeSettings.HostKey)];
 
+    /// <summary>The Tube tab's list for a signed-in person (ADR 0007); a client offers the tab where this rel is advertised.</summary>
+    public IReadOnlyList<ModuleRootLink> RootLinks { get; } = [new("tube:channels", $"/{Api.ChannelsController.Base}", "GET")];
+
     public ModuleManual? Manual => new("Alcifra Tube Module Manual.pdf",
         () => typeof(TubeModule).Assembly.GetManifestResourceStream("Alcifra.Tube.Manual.pdf")
             ?? throw new InvalidOperationException("The manual is not embedded in this build."));
@@ -39,6 +42,7 @@ public sealed class TubeModule : IIndustryModule
     {
         services.AddScoped<Catalogue.VideoCatalogue>();
         services.AddScoped<Catalogue.VideoDirectory>();
+        services.AddScoped<Catalogue.ChannelShelf>();
         services.AddSingleton<Catalogue.EncryptionWarnings>();
     }
 }
