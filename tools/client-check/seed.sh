@@ -10,9 +10,9 @@ cd "$(dirname "$0")"
 HOST=${ALCIFRA_CHECK_API:-http://localhost:8080}
 VIDEO_HOST=${ALCIFRA_CHECK_VIDEO_HOST:-tube.test}
 
-# The demo tenant's setup account (the core's compose seeds it; CanManageModules lets it activate). A throwaway secret:
-# the stack lives for one run on one runner and is reachable from nowhere else.
-eval "$(ALCIFRA_CLIENT_SECRET=dev-demo-secret alcifra login --url "$HOST" --client-id demo-migration)"
+# The demo tenant's unattended setup account (core ADR 0949): it manages modules and repositories, which is what a seed
+# does. A throwaway secret: the stack lives for one run on one runner and is reachable from nowhere else.
+eval "$(ALCIFRA_CLIENT_SECRET=dev-setup-secret alcifra login --url "$HOST" --client-id demo-setup)"
 
 alcifra module activate --module tube
 case "$(alcifra module list 2>&1 | grep -w tube || true)" in

@@ -63,7 +63,8 @@ services:
       ObjectStorage__AccessKey: "storageadmin"
       ObjectStorage__SecretKey: "storageadmin"
       Imap__Enabled: "false"
-      # The demo tenant and its setup account, which may activate a module (the same seed the core's own compose uses).
+      # The demo tenant as the core's own compose seeds it, plus the tenant's unattended SETUP account (core ADR 0949): the
+      # one principal that may activate a module and make a repository, which the migration account may not.
       Demo__Tenant__Name: "Demo"
       Demo__Administrator__Email: "admin@alcifra.local"
       Demo__Administrator__DisplayName: "Demo Admin"
@@ -72,6 +73,9 @@ services:
       Demo__ServiceAccount__Name: "demo-migration"
       Demo__ServiceAccount__ClientId: "demo-migration"
       Demo__ServiceAccount__ClientSecret: "dev-demo-secret"
+      Demo__Setup__ServiceAccount__Name: "Demo setup"
+      Demo__Setup__ServiceAccount__ClientId: "demo-setup"
+      Demo__Setup__ServiceAccount__ClientSecret: "dev-setup-secret"
     volumes:
       - modules:/app/Modules
     ports:
