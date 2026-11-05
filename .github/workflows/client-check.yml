@@ -62,7 +62,6 @@ jobs:
           docker compose pull --quiet
           docker compose up -d --wait --wait-timeout 300
           docker compose ps
-          curl -fsS "$CHECK_HOST/api/v1/config" | head -c 200; echo
 
       - name: The module loaded
         working-directory: tools/client-check
@@ -92,6 +91,8 @@ jobs:
           set -euo pipefail
           dotnet tool install -g alcifra.cli
           tools/client-check/seed.sh
+          # Only now does the core serve this host: the seed named it. Before that, 404 is the design.
+          curl -fsS "$CHECK_HOST/api/v1/config" | head -c 200; echo
 
       # ---- NewPipe: the current extractor release, through its own PeerTube service ------------------------------------
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
