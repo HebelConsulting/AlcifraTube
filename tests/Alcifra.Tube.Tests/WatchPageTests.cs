@@ -52,10 +52,10 @@ public class WatchPageTests
         Assert.Contains("<html lang=\"de\">", html, StringComparison.Ordinal);
         Assert.Contains($"""<a href="/c/f-{Folder:N}">Talks &amp; &lt;b&gt;news&lt;/b&gt;</a> · <a href="/">Kristall Tube</a>""", html, StringComparison.Ordinal);
         Assert.Contains("""<time datetime="2026-10-01T09:00:00Z">1 October 2026</time>""", html, StringComparison.Ordinal);
-        Assert.Contains("Line one\n&quot;quoted&quot; &amp; more", html, StringComparison.Ordinal);
+        Assert.Contains("Line one&#xA;&quot;quoted&quot; &amp; more", html, StringComparison.Ordinal);
         Assert.Contains("<li>keynote</li><li>2026</li>", html, StringComparison.Ordinal);
-        Assert.Contains("""<meta property="og:video:type" content="video/webm">""", html, StringComparison.Ordinal);
-        Assert.Contains($"""<meta property="og:url" content="https://video.example.test/videos/watch/{Clip:D}">""", html, StringComparison.Ordinal);
+        Assert.Contains("""<meta property="og:video:type" content="video/webm" />""", html, StringComparison.Ordinal);
+        Assert.Contains($"""<meta property="og:url" content="https://video.example.test/videos/watch/{Clip:D}" />""", html, StringComparison.Ordinal);
         Assert.Equal(WatchPage.WatchPolicy, http.Response.Headers.ContentSecurityPolicy.ToString());
         Assert.Equal("no-store", http.Response.Headers.CacheControl.ToString());
     }

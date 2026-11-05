@@ -1,0 +1,36 @@
+@* A landing page (ADR 0008): its heading and intro, then whatever the page lists. *@
+<Frame Title="@Title">
+    <Head>
+        <style>
+        main{max-width:1280px;margin:0 auto;padding:16px}
+        h1{font-size:1.5rem;margin:0}
+        a{color:inherit}
+        .intro{color:#6e6e73;margin:4px 0 16px;white-space:pre-wrap}
+        .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:20px;padding:0;margin:0;list-style:none}
+        .thumb{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:#2a2a2d;border-radius:8px}
+        .open{display:block;text-decoration:none}
+        h2{font-size:1rem;margin:8px 0 2px;overflow-wrap:anywhere}
+        .by{color:#6e6e73;font-size:.875rem;margin:0}
+        .text{font-size:.875rem;margin:4px 0 0;overflow-wrap:anywhere}
+        nav{display:flex;flex-wrap:wrap;gap:16px;margin:24px 0 8px}
+        @@media (prefers-color-scheme:dark){.intro,.by{color:#a1a1a6}}
+        </style>
+    </Head>
+    <ChildContent>
+        <main>
+            <h1>@Heading</h1>
+            @if (!string.IsNullOrWhiteSpace(Intro))
+            {
+                <p class="intro">@Intro.Trim()</p>
+            }
+            @ChildContent
+        </main>
+    </ChildContent>
+</Frame>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Heading { get; set; } = string.Empty;
+    [Parameter] public string? Intro { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

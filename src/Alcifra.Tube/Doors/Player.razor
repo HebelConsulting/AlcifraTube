@@ -1,0 +1,7 @@
+@* The browser's own player on the file door, so the bytes still come from storage by redirect (ADR 0005). *@
+<video controls playsinline preload="metadata" src="@File" poster="@Poster"></video>
+
+@code {
+    [Parameter, EditorRequired] public string File { get; set; } = string.Empty;
+    [Parameter] public string? Poster { get; set; }
+}

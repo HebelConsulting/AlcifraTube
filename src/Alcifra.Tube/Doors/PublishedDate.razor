@@ -1,0 +1,9 @@
+@* The date a video was published, after what stands before it; nothing when it has none. *@
+@if (At is { } stamp)
+{
+    @(" · ")<time datetime="@stamp.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture)">@stamp.ToUniversalTime().ToString("d MMMM yyyy", CultureInfo.InvariantCulture)</time>
+}
+
+@code {
+    [Parameter, EditorRequired] public DateTimeOffset? At { get; set; }
+}

@@ -1,0 +1,62 @@
+@* The player and the video's text around it (ADR 0005). *@
+<Frame Title="@($"{Video.Name} · {Account.Name}")" Language="@(Video.Language ?? "en")">
+    <Head>
+        <meta name="author" content="@Account.Name">
+        <meta property="og:type" content="video.other">
+        <meta property="og:site_name" content="@Account.Name">
+        <meta property="og:title" content="@Video.Name">
+        <meta property="og:description" content="@Summary">
+        <meta property="og:url" content="https://@Host/videos/watch/@Video.Id.ToString("D")">
+        <meta property="og:video" content="@File">
+        <meta property="og:video:type" content="@(FilesController.ContentTypeOf(Extension) ?? "video/mp4")">
+        @if (Poster is not null)
+        {
+            <meta property="og:image" content="@Poster">
+        }
+        <meta name="description" content="@Summary">
+        <style>
+        main{max-width:960px;margin:0 auto;padding:16px}
+        video{width:100%;max-height:70vh;background:#000;border-radius:8px}
+        h1{font-size:1.4rem;margin:12px 0 4px}
+        .by{color:#6e6e73;margin:0 0 12px}
+        .by a{color:inherit}
+        .text{white-space:pre-wrap}
+        .tags{display:flex;flex-wrap:wrap;gap:6px;padding:0;list-style:none}
+        .tags li{background:#f2f2f4;border-radius:999px;padding:2px 10px;font-size:.85rem}
+        @@media (prefers-color-scheme:dark){.by{color:#a1a1a6}.tags li{background:#2a2a2d}}
+        </style>
+    </Head>
+    <ChildContent>
+        <main>
+            <Player File="@File" Poster="@Poster" />
+            <h1>@Video.Name</h1>
+            @* A channel with no folder behind it has no page to link to. *@
+            <p class="by">@if (Channel.FolderId == Guid.Empty) {@Channel.Name} else {<a href="@LandingPage.ChannelAddress(Channel.FolderId)">@Channel.Name</a>} · <a href="/">@Account.Name</a><PublishedDate At="Video.PublishedAt" /></p>
+            @if (Video.Description.Length > 0)
+            {
+                <p class="text">@Video.Description</p>
+            }
+            @if (Video.Tags.Count > 0)
+            {
+                <ul class="tags">
+                    @foreach (var tag in Video.Tags)
+                    {
+                        <li>@tag</li>
+                    }
+                </ul>
+            }
+        </main>
+    </ChildContent>
+</Frame>
+
+@code {
+    [Parameter, EditorRequired] public PublishedVideo Video { get; set; } = null!;
+    [Parameter, EditorRequired] public Channel Channel { get; set; } = null!;
+    [Parameter, EditorRequired] public Account Account { get; set; } = null!;
+    [Parameter, EditorRequired] public string Host { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Extension { get; set; } = string.Empty;
+
+    private string File => WatchPage.FileUrl(Video, Host, Extension);
+    private string? Poster => WatchPage.Poster(Video, Host);
+    private string Summary => LandingPage.Summary(Video.Description);
+}

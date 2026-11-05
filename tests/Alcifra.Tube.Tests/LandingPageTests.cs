@@ -67,6 +67,15 @@ public class LandingPageTests
     }
 
     [Fact]
+    public async Task A_name_keeps_its_letters_while_its_markup_is_encoded()
+    {
+        var html = Html(await Host(Archive(Clip(Older, Talks, "Grüße <i>", "true", "2026-09-01T09:00:00Z"))).Latest(1, CancellationToken.None));
+
+        Assert.Contains("<h2>Grüße &lt;i&gt;</h2>", html, StringComparison.Ordinal);
+        Assert.Contains("<title>Kristall Tube</title>", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task A_video_in_two_channels_appears_once_for_each_linking_to_that_channel()
     {
         var archive = Archive(Clip(Older, Talks, "Shared", "true", "2026-09-01T09:00:00Z"));
