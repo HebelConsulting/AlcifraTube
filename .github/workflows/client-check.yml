@@ -111,8 +111,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          keytool -importcert -noprompt -trustcacerts -alias edge-ca -file "$CHECK_CA" \
-            -keystore "$JAVA_HOME/lib/security/cacerts" -storepass changeit > /dev/null
+          # A copy of the JDK's trust store with the edge's root added, handed to every JVM of this step: the public roots
+          # stay (the dependencies download over TLS), the JDK itself stays untouched.
+          cp "$JAVA_HOME/lib/security/cacerts" "$RUNNER_TEMP/cacerts"
+          chmod u+w "$RUNNER_TEMP/cacerts"
+          keytool -importcert -noprompt -alias edge-ca -file "$CHECK_CA" -keystore "$RUNNER_TEMP/cacerts" -storepass changeit
+          export JAVA_TOOL_OPTIONS="-Djavax.net.ssl.trustStore=$RUNNER_TEMP/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
           version=$(gh api repos/TeamNewPipe/NewPipeExtractor/releases/latest --jq .tag_name)
           echo "newest NewPipeExtractor release: $version"
           echo "version=$version" >> "$GITHUB_OUTPUT"
