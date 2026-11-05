@@ -20,7 +20,7 @@ import 'package:peertube/shared/utils/json_parser.dart';
 import 'package:peertube/shared/utils/tools.dart';
 
 final String host =
-    Platform.environment['ALCIFRA_CHECK_HOST'] ?? 'http://tube.test:8080';
+    Platform.environment['ALCIFRA_CHECK_HOST'] ?? 'http://tube.test';
 
 Future<HttpClientResponse> get(Uri uri, {String? range}) async {
   final client = HttpClient();

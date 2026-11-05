@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import javax.annotation.Nonnull;
 import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
@@ -32,7 +31,7 @@ public final class Check {
     }
 
     public static void main(final String[] args) throws Exception {
-        final String base = args.length > 0 ? args[0] : "http://tube.test:8080";
+        final String base = args.length > 0 ? args[0] : "http://tube.test";
         final OkHttpClient http = new OkHttpClient.Builder()
                 .followRedirects(true).followSslRedirects(true)
                 .readTimeout(30, TimeUnit.SECONDS).build();
@@ -99,7 +98,7 @@ public final class Check {
         }
 
         @Override
-        public Response execute(@Nonnull final Request request) throws IOException {
+        public Response execute(final Request request) throws IOException {
             final byte[] data = request.dataToSend();
             final okhttp3.Request.Builder builder = new okhttp3.Request.Builder()
                     .method(request.httpMethod(), data == null ? null : RequestBody.create(data))

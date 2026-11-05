@@ -2,7 +2,8 @@
 # built from this commit laid into the core's Modules directory. Self-contained in the runner; it reaches nothing deployed.
 #
 # Only what the module's clients exercise: search, previews, mail, encryption and the secret store stay out, as the core's
-# own end-to-end tests leave them out (OpenSearch and Valkey are optional, the core falls back without them).
+# own end-to-end tests leave them out (OpenSearch and Valkey are optional, the core falls back without them). An edge in
+# front, because a PeerTube client reaches a host, not a path prefix.
 services:
   db:
     image: postgres:16.15-alpine
@@ -80,6 +81,16 @@ services:
       - modules:/app/Modules
     ports:
       - "8080:8080"
+
+  # The video host's edge: the same rewrite the deployed edge does (Caddyfile here), on the port a client expects.
+  edge:
+    image: caddy:2.11.7-alpine
+    depends_on:
+      - api
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    ports:
+      - "80:80"
 
 volumes:
   modules:

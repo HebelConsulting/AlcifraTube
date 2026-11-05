@@ -30,7 +30,7 @@ permissions:
 
 env:
   CORE_VERSION: ${{ inputs.core_version || 'latest' }}
-  CHECK_HOST: http://tube.test:8080
+  CHECK_HOST: http://tube.test
 
 jobs:
   clients:
@@ -62,6 +62,7 @@ jobs:
           docker compose pull --quiet
           docker compose up -d --wait --wait-timeout 300
           docker compose ps
+          curl -fsS "$CHECK_HOST/api/v1/config" | head -c 200; echo
 
       - name: The module loaded
         working-directory: tools/client-check
