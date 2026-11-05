@@ -1,0 +1,81 @@
+# The weekly client check's stack (core #2142): the released core image, Postgres and the object store, with the module
+# built from this commit laid into the core's Modules directory. Self-contained in the runner; it reaches nothing deployed.
+#
+# Only what the module's clients exercise: search, previews, mail, encryption and the secret store stay out, as the core's
+# own end-to-end tests leave them out (OpenSearch and Valkey are optional, the core falls back without them).
+services:
+  db:
+    image: postgres:16.15-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: alcifra
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d alcifra"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  seaweedfs:
+    image: chrislusf/seaweedfs@sha256:c7d6c721b30ae711db766bbbfd40192776e263d4e51e22f57baef7bef93c12c6
+    command: server -dir=/data -s3 -s3.config=/etc/seaweedfs/s3.json -s3.port=8333 -volume.max=100
+    volumes:
+      - ./seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
+    ports:
+      - "8333:8333"   # the file door's presigned links name the runner's localhost
+
+  # The module from this commit, laid out as an installation lays a package out: only the package's own assemblies, the
+  # ABI resolves from the host. Staged then swapped, never written in place.
+  modules-local:
+    image: alpine:3.22.5
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        rm -rf /modules/tube.new && mkdir -p /modules/tube.new
+        cp -a /src/. /modules/tube.new/
+        rm -rf /modules/tube && mv /modules/tube.new /modules/tube
+        ls -1 /modules/tube
+    volumes:
+      - ./module:/src:ro
+      - modules:/modules
+
+  api:
+    image: ghcr.io/hebelconsulting/alcifra:${CORE_VERSION:-latest}
+    depends_on:
+      db:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_started
+      modules-local:
+        condition: service_completed_successfully
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: "Host=db;Port=5432;Database=alcifra;Username=postgres;Password=postgres"
+      App__ApplyMigrationsAtStartup: "true"
+      App__BaseUrl: "http://localhost:8080"
+      Modules__Directory: "/app/Modules"
+      ObjectStorage__ServiceUrl: "http://seaweedfs:8333"
+      ObjectStorage__PublicServiceUrl: "http://localhost:8333"
+      ObjectStorage__Region: "us-east-1"
+      ObjectStorage__BucketName: "alcifra"
+      ObjectStorage__BucketPrefix: "alcifra"
+      ObjectStorage__AccessKey: "storageadmin"
+      ObjectStorage__SecretKey: "storageadmin"
+      Imap__Enabled: "false"
+      # The demo tenant and its setup account, which may activate a module (the same seed the core's own compose uses).
+      Demo__Tenant__Name: "Demo"
+      Demo__Administrator__Email: "admin@alcifra.local"
+      Demo__Administrator__DisplayName: "Demo Admin"
+      Demo__Administrator__Password: "SimplDemo2026!"
+      Demo__RepositoryName: "Demo Repository"
+      Demo__ServiceAccount__Name: "demo-migration"
+      Demo__ServiceAccount__ClientId: "demo-migration"
+      Demo__ServiceAccount__ClientSecret: "dev-demo-secret"
+    volumes:
+      - modules:/app/Modules
+    ports:
+      - "8080:8080"
+
+volumes:
+  modules:

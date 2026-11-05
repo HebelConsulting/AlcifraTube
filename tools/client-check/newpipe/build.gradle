@@ -1,0 +1,27 @@
+// The weekly client check's NewPipe half (core #2142): the current NewPipeExtractor release's PeerTube extractor, run
+// against the check's stack. The extractor version comes from the workflow (-PnewpipeVersion), which reads the project's
+// newest release at run time: the point is the client people install today, never a vendored copy.
+plugins {
+    id 'java'
+    id 'application'
+}
+
+repositories {
+    mavenCentral()
+    maven { url 'https://jitpack.io' }   // where the extractor is published (its README)
+}
+
+dependencies {
+    implementation "com.github.teamnewpipe:NewPipeExtractor:${project.findProperty('newpipeVersion') ?: 'v0.26.5'}"
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+application {
+    mainClass = 'alcifra.tube.check.Check'
+}
