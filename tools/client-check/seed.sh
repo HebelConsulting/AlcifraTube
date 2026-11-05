@@ -7,7 +7,7 @@
 # Output goes through the CLI's own logging; the ids a later step needs are written to seed.env (the channel and the clip).
 set -euo pipefail
 cd "$(dirname "$0")"
-HOST=${ALCIFRA_CHECK_API:-http://localhost:8080}
+HOST=${ALCIFRA_CHECK_API:-http://localhost:8080}   # the core directly; the edge in front is for the clients
 VIDEO_HOST=${ALCIFRA_CHECK_VIDEO_HOST:-tube.test}
 
 # The demo tenant's unattended setup account (core ADR 0949): it manages modules and repositories, which is what a seed

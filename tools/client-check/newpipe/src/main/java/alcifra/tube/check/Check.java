@@ -31,7 +31,7 @@ public final class Check {
     }
 
     public static void main(final String[] args) throws Exception {
-        final String base = args.length > 0 ? args[0] : "http://tube.test";
+        final String base = args.length > 0 ? args[0] : "https://tube.test";
         final OkHttpClient http = new OkHttpClient.Builder()
                 .followRedirects(true).followSslRedirects(true)
                 .readTimeout(30, TimeUnit.SECONDS).build();

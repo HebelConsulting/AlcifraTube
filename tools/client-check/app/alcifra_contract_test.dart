@@ -20,10 +20,20 @@ import 'package:peertube/shared/utils/json_parser.dart';
 import 'package:peertube/shared/utils/tools.dart';
 
 final String host =
-    Platform.environment['ALCIFRA_CHECK_HOST'] ?? 'http://tube.test';
+    Platform.environment['ALCIFRA_CHECK_HOST'] ?? 'https://tube.test';
+
+// The check's edge signs its certificate with its own authority (Caddyfile); the run hands its root over here.
+SecurityContext trust() {
+  final ca = Platform.environment['ALCIFRA_CHECK_CA'];
+  final context = SecurityContext(withTrustedRoots: true);
+  if (ca != null) {
+    context.setTrustedCertificates(ca);
+  }
+  return context;
+}
 
 Future<HttpClientResponse> get(Uri uri, {String? range}) async {
-  final client = HttpClient();
+  final client = HttpClient(context: trust());
   final request = await client.getUrl(uri);
   if (range != null) {
     request.headers.set(HttpHeaders.rangeHeader, range);

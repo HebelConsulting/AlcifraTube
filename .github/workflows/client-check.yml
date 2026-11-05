@@ -30,7 +30,7 @@ permissions:
 
 env:
   CORE_VERSION: ${{ inputs.core_version || 'latest' }}
-  CHECK_HOST: http://tube.test
+  CHECK_HOST: https://tube.test
 
 jobs:
   clients:
@@ -62,6 +62,10 @@ jobs:
           docker compose pull --quiet
           docker compose up -d --wait --wait-timeout 300
           docker compose ps
+          # The edge's own authority signs tube.test; every client of this run trusts its root (nothing else does).
+          for attempt in $(seq 1 20); do docker compose cp edge:/data/caddy/pki/authorities/local/root.crt "$RUNNER_TEMP/edge-ca.crt" 2>/dev/null && break; sleep 2; done
+          test -s "$RUNNER_TEMP/edge-ca.crt"
+          echo "CHECK_CA=$RUNNER_TEMP/edge-ca.crt" >> "$GITHUB_ENV"
 
       - name: The module loaded
         working-directory: tools/client-check
@@ -92,7 +96,7 @@ jobs:
           dotnet tool install -g alcifra.cli
           tools/client-check/seed.sh
           # Only now does the core serve this host: the seed named it. Before that, 404 is the design.
-          curl -fsS "$CHECK_HOST/api/v1/config" | head -c 200; echo
+          curl -fsS --cacert "$CHECK_CA" "$CHECK_HOST/api/v1/config" | head -c 200; echo
 
       # ---- NewPipe: the current extractor release, through its own PeerTube service ------------------------------------
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
@@ -107,6 +111,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          keytool -importcert -noprompt -trustcacerts -alias edge-ca -file "$CHECK_CA" \
+            -keystore "$JAVA_HOME/lib/security/cacerts" -storepass changeit > /dev/null
           version=$(gh api repos/TeamNewPipe/NewPipeExtractor/releases/latest --jq .tag_name)
           echo "newest NewPipeExtractor release: $version"
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -132,6 +138,7 @@ jobs:
         working-directory: app
         env:
           ALCIFRA_CHECK_HOST: ${{ env.CHECK_HOST }}
+          ALCIFRA_CHECK_CA: ${{ env.CHECK_CA }}
         run: |
           set -euo pipefail
           flutter pub get
