@@ -1,6 +1,6 @@
 using Alcifra.Tube.Module;
 using Microsoft.Extensions.Logging;
-using SimplArchive.ModuleAbi;
+using Alcifra.ModuleAbi;
 
 namespace Alcifra.Tube.Catalogue;
 
