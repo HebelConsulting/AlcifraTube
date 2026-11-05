@@ -72,6 +72,20 @@ jobs:
           grep -E "Loaded module|NOT loaded|built against|could not be loaded" api.log || true
           grep -c "Loaded module tube " api.log > /dev/null || { echo "::error::the core did not load the module"; exit 1; }
 
+      # The seed generates its clip with ffmpeg, which the runner image does not carry. Three attempts, because the package
+      # mirror stalls now and then (seen twice on one evening in the core's manual build).
+      - name: Install ffmpeg
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if sudo -E timeout --kill-after=10 180 apt-get update -qq \
+               && sudo -E timeout --kill-after=10 300 apt-get install -y -qq --no-install-recommends ffmpeg; then
+              exit 0
+            fi
+            echo "apt attempt $attempt failed; retrying"; sleep 10
+          done
+          echo "::error::could not install ffmpeg after 3 attempts"; exit 1
+
       - name: Seed the module
         run: |
           set -euo pipefail
