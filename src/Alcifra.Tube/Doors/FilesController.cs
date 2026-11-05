@@ -2,7 +2,7 @@ using Alcifra.Tube.Catalogue;
 using Alcifra.Tube.Module;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SimplArchive.ModuleAbi;
+using Alcifra.ModuleAbi;
 
 namespace Alcifra.Tube.Doors;
 

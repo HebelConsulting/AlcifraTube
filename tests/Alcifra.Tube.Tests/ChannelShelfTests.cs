@@ -3,7 +3,7 @@ using Alcifra.Tube.Catalogue;
 using Alcifra.Tube.Module;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
-using SimplArchive.ModuleAbi;
+using Alcifra.ModuleAbi;
 
 namespace Alcifra.Tube.Tests;
 

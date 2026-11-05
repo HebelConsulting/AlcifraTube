@@ -1,6 +1,6 @@
 using Alcifra.Tube.Api;
 using Alcifra.Tube.Module;
-using SimplArchive.ModuleAbi;
+using Alcifra.ModuleAbi;
 
 namespace Alcifra.Tube.Catalogue;
 

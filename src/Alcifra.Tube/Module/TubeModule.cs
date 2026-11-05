@@ -1,5 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using SimplArchive.ModuleAbi;
+using Alcifra.ModuleAbi;
 
 namespace Alcifra.Tube.Module;
 
