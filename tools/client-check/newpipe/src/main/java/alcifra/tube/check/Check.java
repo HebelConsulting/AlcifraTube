@@ -32,6 +32,7 @@ public final class Check {
 
     public static void main(final String[] args) throws Exception {
         final String base = args.length > 0 ? args[0] : "https://tube.test";
+        final String version = args.length > 1 ? args[1] : "an unnamed version";
         final OkHttpClient http = new OkHttpClient.Builder()
                 .followRedirects(true).followSslRedirects(true)
                 .readTimeout(30, TimeUnit.SECONDS).build();
@@ -77,7 +78,7 @@ public final class Check {
         final ChannelExtractor channel = service.getChannelExtractor(stream.getUploaderUrl());
         channel.fetchPage();
         step("channel: '" + channel.getName() + "'");
-        System.out.println("NewPipe " + NewPipe.class.getPackage().getImplementationVersion() + ": every step passed");
+        System.out.println("NewPipeExtractor " + version + ": every step passed");
     }
 
     private static void step(final String what) {
