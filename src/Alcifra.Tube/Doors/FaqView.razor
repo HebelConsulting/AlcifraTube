@@ -1,0 +1,10 @@
+@* How to watch in a mobile app (ADR 0008). *@
+<LandingFrame Title="@($"FAQ · {Account.Name}")" Heading="FAQ">
+    <h2>How can I watch the videos offered here in a mobile app?</h2>
+    <p>AlcifraTube has been tested with <a href="https://newpipe.net/" rel="noopener noreferrer">NewPipe</a> and <a href="https://apps.apple.com/app/peertube/id6737834858" rel="noopener noreferrer">PeerTube</a>.</p>
+    <nav><a href="/">@Account.Name</a></nav>
+</LandingFrame>
+
+@code {
+    [Parameter, EditorRequired] public Account Account { get; set; } = null!;
+}

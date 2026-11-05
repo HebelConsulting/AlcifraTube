@@ -1,0 +1,12 @@
+@* One channel's latest videos (ADR 0008). *@
+<LandingFrame Title="@($"{Channel.Name} · {Account.Name}")" Heading="@Channel.Name" Intro="@Channel.Description">
+    <VideoGrid Videos="Videos" ChannelNames="@(new Dictionary<Guid, string> { [Channel.FolderId] = Channel.Name })" Address="@LandingPage.ChannelAddress(Channel.FolderId)" Page="Page" />
+    <nav><a href="/">@Account.Name</a><a href="/faq">FAQ</a></nav>
+</LandingFrame>
+
+@code {
+    [Parameter, EditorRequired] public Channel Channel { get; set; } = null!;
+    [Parameter, EditorRequired] public IReadOnlyList<PublishedVideo> Videos { get; set; } = [];
+    [Parameter, EditorRequired] public Account Account { get; set; } = null!;
+    [Parameter, EditorRequired] public int Page { get; set; }
+}

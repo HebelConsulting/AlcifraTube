@@ -20,7 +20,7 @@ public sealed class LandingController(VideoCatalogue catalogue, VideoDirectory d
     {
         var videos = await catalogue.PublishedAsync(ct);
         var names = (await catalogue.ChannelsAsync(ct)).ToDictionary(c => c.Id, c => c.Name);
-        return Page(LandingPage.Latest(videos, names, await directory.AccountAsync(Host, ct), LandingPage.ClampPage(page, videos.Count)));
+        return Page(await LandingPage.Latest(videos, names, await directory.AccountAsync(Host, ct), LandingPage.ClampPage(page, videos.Count)));
     }
 
     [HttpHead("")]
@@ -36,14 +36,14 @@ public sealed class LandingController(VideoCatalogue catalogue, VideoDirectory d
         }
 
         var videos = (await catalogue.PublishedAsync(ct)).Where(v => v.FolderId == channel.Id).ToList();
-        return Page(LandingPage.Channel(VideoDirectory.ChannelOf(channel), videos, await directory.AccountAsync(Host, ct), LandingPage.ClampPage(page, videos.Count)));
+        return Page(await LandingPage.Channel(VideoDirectory.ChannelOf(channel), videos, await directory.AccountAsync(Host, ct), LandingPage.ClampPage(page, videos.Count)));
     }
 
     [HttpHead("c/{name}")]
     public Task<IActionResult> ChannelHead(string name, [FromQuery] int page, CancellationToken ct) => Channel(name, page, ct);
 
     [HttpGet("faq")]
-    public async Task<IActionResult> Faq(CancellationToken ct) => Page(LandingPage.Faq(await directory.AccountAsync(Host, ct)));
+    public async Task<IActionResult> Faq(CancellationToken ct) => Page(await LandingPage.Faq(await directory.AccountAsync(Host, ct)));
 
     [HttpHead("faq")]
     public Task<IActionResult> FaqHead(CancellationToken ct) => Faq(ct);

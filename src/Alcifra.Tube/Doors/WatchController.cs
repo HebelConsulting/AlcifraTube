@@ -25,7 +25,7 @@ public sealed class WatchController(VideoCatalogue catalogue, VideoDirectory dir
 
         var account = await directory.AccountAsync(Host, ct);
         var channel = await directory.ChannelAsync(video, ct);
-        return Page(WatchPage.Watch(video, channel, account, Host, await directory.FileExtensionAsync(videoId, ct)), WatchPage.WatchPolicy);
+        return Page(await WatchPage.Watch(video, channel, account, Host, await directory.FileExtensionAsync(videoId, ct)), WatchPage.WatchPolicy);
     }
 
     [HttpHead("videos/watch/{videoId:guid}")]
@@ -48,7 +48,7 @@ public sealed class WatchController(VideoCatalogue catalogue, VideoDirectory dir
         }
 
         var account = await directory.AccountAsync(Host, ct);
-        return Page(WatchPage.Embed(video, account, Host, await directory.FileExtensionAsync(videoId, ct)), WatchPage.EmbedPolicy);
+        return Page(await WatchPage.Embed(video, account, Host, await directory.FileExtensionAsync(videoId, ct)), WatchPage.EmbedPolicy);
     }
 
     [HttpHead("videos/embed/{videoId:guid}")]

@@ -1,0 +1,12 @@
+@* The host's latest videos (ADR 0008). *@
+<LandingFrame Title="@Account.Name" Heading="@Account.Name" Intro="@Account.Description">
+    <VideoGrid Videos="Videos" ChannelNames="ChannelNames" Address="/" Page="Page" />
+    <nav><a href="/faq">FAQ</a></nav>
+</LandingFrame>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<PublishedVideo> Videos { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyDictionary<Guid, string> ChannelNames { get; set; } = new Dictionary<Guid, string>();
+    [Parameter, EditorRequired] public Account Account { get; set; } = null!;
+    [Parameter, EditorRequired] public int Page { get; set; }
+}

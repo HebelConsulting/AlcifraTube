@@ -1,0 +1,60 @@
+@* The cards of one page, newest upper left, and plain links to the pages around it, so the pages stay without script. *@
+@if (Videos.Count == 0)
+{
+    <p>No videos have been published yet.</p>
+}
+else
+{
+    <ul class="grid">
+        @foreach (var video in Videos.Skip((Page - 1) * LandingPage.PageSize).Take(LandingPage.PageSize))
+        {
+            <li>
+                <a class="open" href="/videos/watch/@video.Id.ToString("D")">
+                    @if (video.ThumbnailId is null)
+                    {
+                        <span class="thumb"></span>
+                    }
+                    else
+                    {
+                        <img class="thumb" src="/files/@video.Id.ToString("D")/thumbnail" alt="" loading="lazy">
+                    }
+                    <h2>@video.Name</h2>
+                </a>
+                <p class="by">
+                    @if (video.FolderId is { } channelId)
+                    {
+                        <a href="@LandingPage.ChannelAddress(channelId)">@ChannelNames.GetValueOrDefault(channelId, "Videos")</a>
+                    }
+                    <PublishedDate At="video.PublishedAt" />
+                </p>
+                @if (video.Description.Length > 0)
+                {
+                    <p class="text">@LandingPage.Summary(video.Description)</p>
+                }
+            </li>
+        }
+    </ul>
+}
+@if (Newer || Older)
+{
+    <nav>
+        @if (Newer)
+        {
+            <a href="@(Page == 2 ? Address : $"{Address}?page={Page - 1}")" rel="prev">Newer</a>
+        }
+        @if (Older)
+        {
+            <a href="@Address?page=@(Page + 1)" rel="next">Older</a>
+        }
+    </nav>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<PublishedVideo> Videos { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyDictionary<Guid, string> ChannelNames { get; set; } = new Dictionary<Guid, string>();
+    [Parameter, EditorRequired] public string Address { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public int Page { get; set; }
+
+    private bool Newer => Page > 1;
+    private bool Older => Page * LandingPage.PageSize < Videos.Count;
+}

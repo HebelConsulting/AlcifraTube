@@ -1,0 +1,17 @@
+@* Nothing but the player, for another site's frame (ADR 0005). *@
+<Frame Title="@Video.Name" Language="@(Video.Language ?? "en")">
+    <Head>
+        <meta name="author" content="@Account.Name">
+        <style>html,body{margin:0;height:100%;background:#000}video{width:100%;height:100%}</style>
+    </Head>
+    <ChildContent>
+        <Player File="@WatchPage.FileUrl(Video, Host, Extension)" Poster="@WatchPage.Poster(Video, Host)" />
+    </ChildContent>
+</Frame>
+
+@code {
+    [Parameter, EditorRequired] public PublishedVideo Video { get; set; } = null!;
+    [Parameter, EditorRequired] public Account Account { get; set; } = null!;
+    [Parameter, EditorRequired] public string Host { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Extension { get; set; } = string.Empty;
+}
