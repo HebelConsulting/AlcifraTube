@@ -1,4 +1,4 @@
-#import "template.typ": conf, accent
+#import "template.typ": conf, accent, feature
 
 #show: doc => conf(doc)
 
@@ -15,11 +15,11 @@
 
 = What the module does
 
-A *Tube Channel* is a folder that clients show as one channel, and a repository can hold several. A video is a document
+#feature(id: "channels", title: "A channel is a folder, publishing is a field")[A *Tube Channel* is a folder that clients show as one channel, and a repository can hold several. A video is a document
 wearing the *Video* mask. Prepare it anywhere; it is offered only through a channel, by sitting in one or by a reference
 placed in one, so one video can be in several channels. With its *Published* field at `yes`, PeerTube clients play it from
 your video host, streamed straight from storage; set it back to `no`, or remove it from the channel, and it is gone from
-the clients at once. Outside every channel a video is shown nowhere, whatever *Published* says.
+the clients at once. Outside every channel a video is shown nowhere, whatever *Published* says.]
 
 Publishing takes two rights: editing the video, and creating in the channel. In the clients' overview a video appears once
 per channel it is in; opening one names the channel it sits in, else the one that referenced it first.
@@ -41,19 +41,19 @@ per channel it is in; opening one names the channel it sits in, else the one tha
 
 = The pages in a browser
 
-The video host's front page shows the latest videos, the newest in the upper left corner and the oldest in the lower right,
+#feature(id: "pages", title: "Your video host in a browser")[The video host's front page shows the latest videos, the newest in the upper left corner and the oldest in the lower right,
 24 to a page, each with its thumbnail and description. Each video links to its channel's page, which shows that channel's
 latest videos the same way. A video in two channels appears once for each. The front page links to a short FAQ on watching
-in a mobile app.
+in a mobile app.]
 
 The proxy in front of the video host has to pass `/`, `/c/` and `/faq` to the module as well, and each thumbnail counts
 against the limit on anonymous requests per address.
 
 = The Tube tab
 
-Where the module is active, the clients gain a *Tube* tab or tile. It lists the channels you can see, each with a checkbox
+#feature(id: "tab", title: "The Tube tab in every client")[Where the module is active, the clients gain a *Tube* tab or tile. It lists the channels you can see, each with a checkbox
 and a lock if you can't add to it, and a filter over the videos. Your own rights decide what shows: published videos, and
-any video you may edit, marked as a draft.
+any video you may edit, marked as a draft.]
 
 Where your rights allow, you can publish or unpublish a video, edit its details, place it in another channel, and remove it
 from a channel that only references it, which never deletes the video. Channels are created, renamed and deleted in the
@@ -62,6 +62,6 @@ nothing to open there. A tenant that encrypts at rest sees the tab empty, with a
 
 = Limits
 
-The module serves tenants that do not encrypt content at rest: a video's bytes go straight from storage to the player,
+#feature(id: "storage", title: "Streamed straight from storage")[The module serves tenants that do not encrypt content at rest: a video's bytes go straight from storage to the player,
 and an encrypted object could only be served through the server. Such a tenant sees an empty catalogue, and the log says
-why. Files play as stored; there is no transcoding.
+why. Files play as stored; there is no transcoding.]
