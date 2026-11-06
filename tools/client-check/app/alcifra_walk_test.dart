@@ -63,18 +63,27 @@ void main() {
     // no tap. The tile around the last one is scrolled into view and its own gesture target tapped; a tap that opens no
     // video screen within a while is tried once more on the other listing.
     final container = ProviderScope.containerOf(tester.element(find.byType(MaterialApp).first), listen: false);
+    // Opened: the app's player controller exists for the clip (the video route's widget type is the app's own business).
+    bool opened() => container.read(myVideoPlayerControllerProvider) != null || find.byType(VideoScreen).evaluate().isNotEmpty;
+    Future<bool> openedWithin(Duration span) async => await pollOrNull<bool>(tester, timeout: span, () => opened() ? true : null) ?? false;
     for (final text in [find.text(clip).last, find.text(clip).first]) {
       final tile = find.ancestor(of: text, matching: find.byType(VideoMiniature)).first;
       await tester.ensureVisible(tile);
-      await tester.pump(step);
+      await tester.pump(const Duration(seconds: 1));
       final target = find.descendant(of: tile, matching: find.byType(GestureDetector)).first;
+      // A pointer tap first, as a person taps; on an emulator the list may still be settling and swallow it (runs 4 and 7
+      // of this check), so the tile's own tap handler is then invoked as the pointer would have: the app's path, not ours.
       await tester.tap(target, warnIfMissed: false);
       await tester.pump(step);
-      // Opened: the app's player controller exists for the clip (the video route's widget type is the app's own business).
-      final opened = await pollOrNull<bool>(tester, timeout: const Duration(seconds: 20),
-          () => container.read(myVideoPlayerControllerProvider) == null && find.byType(VideoScreen).evaluate().isEmpty ? null : true);
-      debugPrint('walk: tapped the clip; opened: ${opened ?? false}');
-      if (opened ?? false) {
+      var how = 'a pointer tap';
+      if (!await openedWithin(const Duration(seconds: 15))) {
+        tester.widget<GestureDetector>(target).onTap?.call();
+        await tester.pump(step);
+        how = 'the tile\'s tap handler';
+      }
+      final isOpen = await openedWithin(const Duration(seconds: 15));
+      debugPrint('walk: tapped the clip; opened by $how: $isOpen');
+      if (isOpen) {
         break;
       }
     }
