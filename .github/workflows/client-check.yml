@@ -184,13 +184,8 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           emulator-boot-timeout: 900
-          script: |
-            tools/client-check/emulator/trust-edge.sh "${{ steps.stack.outputs.ca }}" tube.test
-            cd app
-            flutter test integration_test/alcifra_walk_test.dart -d emulator-5554 --flavor stable \
-              --dart-define-from-file=env-stable.json --dart-define=logLevel=0 --dart-define=ALCIFRA_CHECK_HOST=tube.test \
-              --timeout 20m \
-              || { echo "::group::logcat"; adb logcat -d | grep -E "flutter|ExoPlayer|MediaCodec|AndroidRuntime|Conscrypt" | tail -300; echo "::endgroup::"; exit 1; }
+          # One line: the runner runs each line of this input as its own shell.
+          script: tools/client-check/emulator/walk.sh "${{ steps.stack.outputs.ca }}" tube.test
 
       - name: Report the walk
         if: ${{ always() && github.event_name != 'pull_request' }}

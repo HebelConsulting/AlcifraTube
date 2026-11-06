@@ -7,7 +7,7 @@
 set -uo pipefail
 ca=$1; host=$2
 tools/client-check/emulator/trust-edge.sh "$ca" "$host" || exit 1
-cd app
+cd app || exit 1
 flutter test integration_test/alcifra_walk_test.dart -d emulator-5554 --flavor stable \
   --dart-define-from-file=env-stable.json --dart-define=logLevel=0 --dart-define="ALCIFRA_CHECK_HOST=$host" --timeout 20m \
   || { echo "::group::logcat"; adb logcat -d | grep -E "flutter|ExoPlayer|MediaCodec|AndroidRuntime|Conscrypt" | tail -300; echo "::endgroup::"; exit 1; }

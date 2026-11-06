@@ -66,14 +66,16 @@ runs:
         grep -c "Loaded module tube " api.log > /dev/null || { echo "::error::the core did not load the module"; exit 1; }
 
     # The seed generates its clip with ffmpeg, which the runner image does not carry. Three attempts, because the package
-    # mirror stalls now and then (seen twice on one evening in the core's manual build).
+    # mirror stalls now and then (seen twice on one evening in the core's manual build, and three times in a row on one
+    # run of this check). The image's package lists are fresh, so the first attempt installs without refreshing them;
+    # only a retry refreshes, since the refresh is the step that stalls.
     - name: Install ffmpeg
       shell: bash
       run: |
         set -euo pipefail
         for attempt in 1 2 3; do
-          if sudo -E timeout --kill-after=10 180 apt-get update -qq \
-             && sudo -E timeout --kill-after=10 300 apt-get install -y -qq --no-install-recommends ffmpeg; then
+          if { [ "$attempt" = 1 ] || sudo timeout --kill-after=10 180 apt-get update -qq; } \
+             && sudo timeout --kill-after=10 300 apt-get install -y -qq --no-install-recommends ffmpeg; then
             exit 0
           fi
           echo "apt attempt $attempt failed; retrying"; sleep 10
