@@ -3,7 +3,9 @@
 #
 # Only what the module's clients exercise: search, previews, mail, encryption and the secret store stay out, as the core's
 # own end-to-end tests leave them out (OpenSearch and Valkey are optional, the core falls back without them). An edge in
-# front, because a PeerTube client reaches a host, not a path prefix.
+# front, because a PeerTube client reaches a host, not a path prefix; the object store answers behind that same edge, over
+# TLS on its own port, because the app in an emulator reaches the runner only by the host's name and its player fetches
+# nothing over plain HTTP.
 services:
   db:
     image: postgres:16.15-alpine
@@ -21,8 +23,7 @@ services:
     command: server -dir=/data -s3 -s3.config=/etc/seaweedfs/s3.json -s3.port=8333 -volume.max=100
     volumes:
       - ./seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
-    ports:
-      - "8333:8333"   # the file door's presigned links name the runner's localhost
+    # No port of its own: the file door's presigned links name the edge (tube.test:8333), which proxies here.
 
   # The module from this commit, laid out as an installation lays a package out: only the package's own assemblies, the
   # ABI resolves from the host. Staged then swapped, never written in place.
@@ -57,7 +58,7 @@ services:
       App__BaseUrl: "http://localhost:8080"
       Modules__Directory: "/app/Modules"
       ObjectStorage__ServiceUrl: "http://seaweedfs:8333"
-      ObjectStorage__PublicServiceUrl: "http://localhost:8333"
+      ObjectStorage__PublicServiceUrl: "https://tube.test:8333"
       ObjectStorage__Region: "us-east-1"
       ObjectStorage__BucketName: "alcifra"
       ObjectStorage__BucketPrefix: "alcifra"
@@ -82,15 +83,18 @@ services:
     ports:
       - "8080:8080"
 
-  # The video host's edge: the same rewrite the deployed edge does (Caddyfile here), on the port a client expects.
+  # The video host's edge: the same rewrite the deployed edge does (Caddyfile here), on the port a client expects; and
+  # the object store's door on 8333, so a presigned link is reached by the same name and the same authority.
   edge:
     image: caddy:2.11.7-alpine
     depends_on:
       - api
+      - seaweedfs
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
     ports:
       - "443:443"
+      - "8333:8333"
 
 volumes:
   modules:
