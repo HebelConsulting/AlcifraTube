@@ -19,6 +19,7 @@ import 'package:peertube/features/video/video_list/video_miniature.dart';
 import 'package:peertube/l10n/app_localizations.dart';
 import 'package:peertube/main.dart' as app;
 import 'package:peertube/routes/explore/add_platform_screen.dart';
+import 'package:peertube/routes/video/video_screen.dart';
 import 'package:video_player/video_player.dart';
 
 /// The video host, as a person types it. A define, because the device sees none of the runner's environment.
@@ -57,18 +58,30 @@ void main() {
       await tapIfPresent(tester, closeLogin);
     });
     // The clip is listed twice (a horizontal shelf and the main list); the first match may sit under a header and take
-    // no tap. The tile around the last one is scrolled into view and tapped.
-    final tile = find.ancestor(of: find.text(clip).last, matching: find.byType(VideoMiniature));
-    await tester.ensureVisible(tile.first);
-    await tester.pump(step);
-    await tester.tap(tile.first, warnIfMissed: false);
-    await tester.pump(step);
+    // no tap. The tile around the last one is scrolled into view and its own gesture target tapped; a tap that opens no
+    // video screen within a while is tried once more on the other listing.
+    final container = ProviderScope.containerOf(tester.element(find.byType(MaterialApp).first), listen: false);
+    for (final text in [find.text(clip).last, find.text(clip).first]) {
+      final tile = find.ancestor(of: text, matching: find.byType(VideoMiniature)).first;
+      await tester.ensureVisible(tile);
+      await tester.pump(step);
+      final target = find.descendant(of: tile, matching: find.byType(GestureDetector)).first;
+      await tester.tap(target, warnIfMissed: false);
+      await tester.pump(step);
+      debugPrint('walk: tapped the clip; video screens on stage: ${find.byType(VideoScreen).evaluate().length}');
+      final opened = await pollOrNull<bool>(tester, timeout: const Duration(seconds: 20), () => find.byType(VideoScreen).evaluate().isEmpty ? null : true);
+      if (opened ?? false) {
+        break;
+      }
+    }
 
     // Playback, read from the app's own controller through its provider: the position must move while it plays.
-    final container = ProviderScope.containerOf(tester.element(find.byType(MaterialApp).first), listen: false);
     final controller = await poll<VideoPlayerController>(tester, 'an initialised player for the clip', timeout: network, () {
       final current = container.read(myVideoPlayerControllerProvider);
       return current != null && current.value.isInitialized ? current : null;
+    }, progress: () {
+      final current = container.read(myVideoPlayerControllerProvider);
+      debugPrint('walk: video screens ${find.byType(VideoScreen).evaluate().length}, controller ${current == null ? 'none' : current.value}');
     });
     expect(controller.value.hasError, isFalse, reason: controller.value.errorDescription);
     final player = container.read(myVideoPlayerControllerProvider.notifier);
@@ -120,15 +133,21 @@ Future<void> tapIfPresent(WidgetTester tester, Finder finder) async {
   await tester.pump(step);
 }
 
-/// Pumps until [read] answers, for state the widgets do not show as text.
-Future<T> poll<T>(WidgetTester tester, String what, T? Function() read, {Duration timeout = const Duration(seconds: 30)}) async {
+/// Pumps until [read] answers, for state the widgets do not show as text; [progress] is told every ten seconds.
+Future<T> poll<T>(WidgetTester tester, String what, T? Function() read, {Duration timeout = const Duration(seconds: 30), void Function()? progress}) async =>
+    await pollOrNull(tester, read, timeout: timeout, progress: progress)
+        ?? fail('$what did not appear within ${timeout.inSeconds} s; the screen says: ${visibleTexts()}');
+
+Future<T?> pollOrNull<T>(WidgetTester tester, T? Function() read, {Duration timeout = const Duration(seconds: 30), void Function()? progress}) async {
   final deadline = DateTime.now().add(timeout);
+  var ticks = 0;
   while (DateTime.now().isBefore(deadline)) {
     await tester.pump(step);
     final value = read();
     if (value != null) return value;
+    if (++ticks % 20 == 0) progress?.call();
   }
-  fail('$what did not appear within ${timeout.inSeconds} s; the screen says: ${visibleTexts()}');
+  return null;
 }
 
 /// What a person would read on the screen now: the context a failed wait reports.
