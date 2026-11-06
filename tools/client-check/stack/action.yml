@@ -45,9 +45,13 @@ runs:
         docker compose pull --quiet
         docker compose up -d --wait --wait-timeout 300
         docker compose ps
-        # The edge's own authority signs tube.test; every client of this run trusts its root (nothing else does).
+        # The edge's own authority signs tube.test; every client of this run trusts its root (nothing else does). The
+        # runner itself trusts it too, since the seed's CLI uploads to the store through the edge and reads the system
+        # store, as the parsers' Dart client does; a JVM keeps its own store (the NewPipe step adds the root there).
         for attempt in $(seq 1 20); do docker compose cp edge:/data/caddy/pki/authorities/local/root.crt "$RUNNER_TEMP/edge-ca.crt" 2>/dev/null && break; sleep 2; done
         test -s "$RUNNER_TEMP/edge-ca.crt"
+        sudo cp "$RUNNER_TEMP/edge-ca.crt" /usr/local/share/ca-certificates/client-check-edge.crt
+        sudo update-ca-certificates | tail -1
         echo "ca=$RUNNER_TEMP/edge-ca.crt" >> "$GITHUB_OUTPUT"
         echo "CHECK_CA=$RUNNER_TEMP/edge-ca.crt" >> "$GITHUB_ENV"
 
