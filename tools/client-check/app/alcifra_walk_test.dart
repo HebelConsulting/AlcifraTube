@@ -15,6 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:peertube/features/platform/platform.dart';
 import 'package:peertube/features/video/player/video_player_providers.dart';
+import 'package:peertube/features/video/video_list/video_miniature.dart';
 import 'package:peertube/l10n/app_localizations.dart';
 import 'package:peertube/main.dart' as app;
 import 'package:peertube/routes/explore/add_platform_screen.dart';
@@ -55,7 +56,13 @@ void main() {
       await tapIfPresent(tester, confirm);
       await tapIfPresent(tester, closeLogin);
     });
-    await tap(tester, find.text(clip), 'the platform home');
+    // The clip is listed twice (a horizontal shelf and the main list); the first match may sit under a header and take
+    // no tap. The tile around the last one is scrolled into view and tapped.
+    final tile = find.ancestor(of: find.text(clip).last, matching: find.byType(VideoMiniature));
+    await tester.ensureVisible(tile.first);
+    await tester.pump(step);
+    await tester.tap(tile.first, warnIfMissed: false);
+    await tester.pump(step);
 
     // Playback, read from the app's own controller through its provider: the position must move while it plays.
     final container = ProviderScope.containerOf(tester.element(find.byType(MaterialApp).first), listen: false);
