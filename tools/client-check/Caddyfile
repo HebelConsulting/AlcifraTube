@@ -1,0 +1,18 @@
+# The edge in front of the check's stack, doing what the deployed edge does for a video host (core tools/edge): one path
+# rewrite onto the core's anonymous root prefix, with the Host header passed upstream unchanged, which is what the core
+# resolves the tenant from. Without this the clients would need a path prefix no PeerTube client can carry.
+#
+# TLS, because the module hands out https links (a file's, a watch page's) as every real video host has them; a client
+# then dials 443. Caddy's own local authority signs the certificate, and the workflow hands that authority's root to
+# each client's trust store for the run.
+tube.test {
+	tls internal
+	@tube path / /c/* /faq /api/v1/* /files/* /videos/watch/* /videos/embed/* /w/*
+	handle @tube {
+		rewrite * /peertube{uri}
+		reverse_proxy api:8080
+	}
+	handle {
+		respond 404
+	}
+}

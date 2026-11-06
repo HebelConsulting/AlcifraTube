@@ -1,0 +1,180 @@
+# The weekly client check (core #2142): do the clients people install today still reach this module? Self-contained in
+# the runner: the released core image, Postgres and the object store, the module built from this commit, one seeded clip.
+# Then the real clients at their newest release, through their own code: the official app's parsers and NewPipe's
+# extractor. A failure opens one issue per client, because a red scheduled run alone goes unnoticed; the next green run
+# closes it.
+#
+# Standard hosted runners only: free in a public repository. The emulator walk of the app (core #2142, item 3) is not
+# here yet.
+#
+# GitHub disables a scheduled workflow after 60 days without activity in a public repository, silently. The core's own
+# weekly probe re-enables this one, so the two watch each other.
+name: Client check
+
+on:
+  schedule:
+    - cron: "37 6 * * 1"   # Mondays, after the demo's reset window; nothing here reaches the demo anyway
+  # A change to the check itself runs it on the pull request, which is also how a new workflow gets its first run: a
+  # dispatch works only from the default branch. A pull request run opens no issue.
+  pull_request:
+    paths: ["tools/client-check/**", ".github/workflows/client-check.yml"]
+  workflow_dispatch:
+    inputs:
+      core_version:
+        description: "The core image tag to run (a released version, or latest)"
+        default: latest
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  CORE_VERSION: ${{ inputs.core_version || 'latest' }}
+  CHECK_HOST: https://tube.test
+
+jobs:
+  clients:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: "10.0.x"
+
+      # The module as an installation lays it out: the package's own assemblies, nothing else (the ABI is the host's).
+      - name: Build the module from this commit
+        run: |
+          set -euo pipefail
+          dotnet pack src/Alcifra.Tube -c Release -o dist
+          mkdir -p tools/client-check/module stage
+          unzip -q dist/Alcifra.Tube.*.nupkg 'lib/*' -d stage
+          find stage/lib -name '*.dll' -exec cp {} tools/client-check/module/ \;
+          ls -1 tools/client-check/module
+
+      - name: Name the video host
+        run: echo "127.0.0.1 tube.test" | sudo tee -a /etc/hosts
+
+      - name: Start the stack
+        working-directory: tools/client-check
+        run: |
+          set -euo pipefail
+          docker compose pull --quiet
+          docker compose up -d --wait --wait-timeout 300
+          docker compose ps
+          # The edge's own authority signs tube.test; every client of this run trusts its root (nothing else does).
+          for attempt in $(seq 1 20); do docker compose cp edge:/data/caddy/pki/authorities/local/root.crt "$RUNNER_TEMP/edge-ca.crt" 2>/dev/null && break; sleep 2; done
+          test -s "$RUNNER_TEMP/edge-ca.crt"
+          echo "CHECK_CA=$RUNNER_TEMP/edge-ca.crt" >> "$GITHUB_ENV"
+
+      - name: The module loaded
+        working-directory: tools/client-check
+        run: |
+          set -euo pipefail
+          # To a file first: `grep -q` closes the pipe at its first match, and under pipefail that fails a step that found what it looked for.
+          docker compose logs --no-color api > api.log
+          grep -E "Loaded module|NOT loaded|built against|could not be loaded" api.log || true
+          grep -c "Loaded module tube " api.log > /dev/null || { echo "::error::the core did not load the module"; exit 1; }
+
+      # The seed generates its clip with ffmpeg, which the runner image does not carry. Three attempts, because the package
+      # mirror stalls now and then (seen twice on one evening in the core's manual build).
+      - name: Install ffmpeg
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if sudo -E timeout --kill-after=10 180 apt-get update -qq \
+               && sudo -E timeout --kill-after=10 300 apt-get install -y -qq --no-install-recommends ffmpeg; then
+              exit 0
+            fi
+            echo "apt attempt $attempt failed; retrying"; sleep 10
+          done
+          echo "::error::could not install ffmpeg after 3 attempts"; exit 1
+
+      - name: Seed the module
+        run: |
+          set -euo pipefail
+          dotnet tool install -g alcifra.cli
+          tools/client-check/seed.sh
+          # Only now does the core serve this host: the seed named it. Before that, 404 is the design.
+          curl -fsS --cacert "$CHECK_CA" "$CHECK_HOST/api/v1/config" | head -c 200; echo
+
+      # ---- NewPipe: the current extractor release, through its own PeerTube service ------------------------------------
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: NewPipe extractor
+        id: newpipe
+        continue-on-error: true
+        working-directory: tools/client-check/newpipe
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # A copy of the JDK's trust store with the edge's root added, handed to every JVM of this step: the public roots
+          # stay (the dependencies download over TLS), the JDK itself stays untouched.
+          cp "$JAVA_HOME/lib/security/cacerts" "$RUNNER_TEMP/cacerts"
+          chmod u+w "$RUNNER_TEMP/cacerts"
+          keytool -importcert -noprompt -alias edge-ca -file "$CHECK_CA" -keystore "$RUNNER_TEMP/cacerts" -storepass changeit
+          export JAVA_TOOL_OPTIONS="-Djavax.net.ssl.trustStore=$RUNNER_TEMP/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
+          version=$(gh api repos/TeamNewPipe/NewPipeExtractor/releases/latest --jq .tag_name)
+          echo "newest NewPipeExtractor release: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          gradle --no-daemon --console=plain run -PnewpipeVersion="$version" --args="$CHECK_HOST $version"
+
+      # ---- The official app: its newest release tag, its own models, generated by its own build step ------------------
+      - name: Check out the app at its newest release
+        id: app
+        run: |
+          set -euo pipefail
+          repo=https://framagit.org/framasoft/peertube/mobile-application.git
+          tag=$(git ls-remote --tags --refs "$repo" | sed 's|.*refs/tags/||' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+          echo "newest app release: $tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          git clone --quiet --depth 1 --branch "$tag" "$repo" app
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version-file: app/pubspec.yaml
+          cache: true
+      - name: The app's parsers
+        id: app-parsers
+        continue-on-error: true
+        working-directory: app
+        env:
+          ALCIFRA_CHECK_HOST: ${{ env.CHECK_HOST }}
+          ALCIFRA_CHECK_CA: ${{ env.CHECK_CA }}
+        run: |
+          set -euo pipefail
+          flutter pub get
+          dart run build_runner build --delete-conflicting-outputs
+          cp ../tools/client-check/app/alcifra_contract_test.dart test/
+          flutter test test/alcifra_contract_test.dart
+
+      # ---- The verdict: one issue per failing client, closed by the next green run ---------------------------------------
+      - name: Report NewPipe
+        if: ${{ always() && github.event_name != 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OUTCOME: ${{ steps.newpipe.outcome }}
+          VERSION: ${{ steps.newpipe.outputs.version }}
+        run: tools/client-check/report.sh "NewPipe" "NewPipeExtractor $VERSION" "$OUTCOME"
+      - name: Report the app
+        if: ${{ always() && github.event_name != 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OUTCOME: ${{ steps.app-parsers.outcome }}
+          VERSION: ${{ steps.app.outputs.tag }}
+        run: tools/client-check/report.sh "the PeerTube app" "the app at $VERSION" "$OUTCOME"
+      - name: Fail when a client failed
+        if: ${{ always() }}
+        run: |
+          [ "${{ steps.newpipe.outcome }}" = success ] && [ "${{ steps.app-parsers.outcome }}" = success ]
+
+      - name: The stack's log, for a failure
+        if: ${{ failure() }}
+        working-directory: tools/client-check
+        run: docker compose logs --no-color api | tail -200
+      - name: Stop the stack
+        if: ${{ always() }}
+        working-directory: tools/client-check
+        run: docker compose down -v
