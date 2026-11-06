@@ -1,0 +1,92 @@
+# The client check's stack as one step (core #2142): the module built from this commit, the released core, Postgres and
+# the object store behind the edge, the module seen loaded, one channel and one clip seeded through `alcifra`. Both jobs
+# of the check start here, so the stack a client meets is the same whether that client runs on the runner (the parsers,
+# the extractor) or in an emulator (the app itself).
+name: The client check's stack
+description: Builds the module from this commit, starts the stack and seeds one clip; names the edge authority's root.
+inputs:
+  core-version:
+    description: The core image tag to run (a released version, or latest)
+    default: latest
+outputs:
+  ca:
+    description: The edge authority's root certificate (PEM); every client of the run trusts it, nothing else does
+    value: ${{ steps.stack.outputs.ca }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+      with:
+        dotnet-version: "10.0.x"
+
+    # The module as an installation lays it out: the package's own assemblies, nothing else (the ABI is the host's).
+    - name: Build the module from this commit
+      shell: bash
+      run: |
+        set -euo pipefail
+        dotnet pack src/Alcifra.Tube -c Release -o dist
+        mkdir -p tools/client-check/module stage
+        unzip -q dist/Alcifra.Tube.*.nupkg 'lib/*' -d stage
+        find stage/lib -name '*.dll' -exec cp {} tools/client-check/module/ \;
+        ls -1 tools/client-check/module
+
+    - name: Name the video host
+      shell: bash
+      run: echo "127.0.0.1 tube.test" | sudo tee -a /etc/hosts
+
+    - name: Start the stack
+      id: stack
+      shell: bash
+      working-directory: tools/client-check
+      env:
+        CORE_VERSION: ${{ inputs.core-version }}
+      run: |
+        set -euo pipefail
+        docker compose pull --quiet
+        docker compose up -d --wait --wait-timeout 300
+        docker compose ps
+        # The edge's own authority signs tube.test; every client of this run trusts its root (nothing else does). The
+        # runner itself trusts it too, since the seed's CLI uploads to the store through the edge and reads the system
+        # store, as the parsers' Dart client does; a JVM keeps its own store (the NewPipe step adds the root there).
+        for attempt in $(seq 1 20); do docker compose cp edge:/data/caddy/pki/authorities/local/root.crt "$RUNNER_TEMP/edge-ca.crt" 2>/dev/null && break; sleep 2; done
+        test -s "$RUNNER_TEMP/edge-ca.crt"
+        sudo cp "$RUNNER_TEMP/edge-ca.crt" /usr/local/share/ca-certificates/client-check-edge.crt
+        sudo update-ca-certificates | tail -1
+        echo "ca=$RUNNER_TEMP/edge-ca.crt" >> "$GITHUB_OUTPUT"
+        echo "CHECK_CA=$RUNNER_TEMP/edge-ca.crt" >> "$GITHUB_ENV"
+
+    - name: The module loaded
+      shell: bash
+      working-directory: tools/client-check
+      run: |
+        set -euo pipefail
+        # To a file first: `grep -q` closes the pipe at its first match, and under pipefail that fails a step that found what it looked for.
+        docker compose logs --no-color api > api.log
+        grep -E "Loaded module|NOT loaded|built against|could not be loaded" api.log || true
+        grep -c "Loaded module tube " api.log > /dev/null || { echo "::error::the core did not load the module"; exit 1; }
+
+    # The seed generates its clip with ffmpeg, which the runner image does not carry. Three attempts, because the package
+    # mirror stalls now and then (seen twice on one evening in the core's manual build, and three times in a row on one
+    # run of this check). The image's package lists are fresh, so the first attempt installs without refreshing them;
+    # only a retry refreshes, since the refresh is the step that stalls.
+    - name: Install ffmpeg
+      shell: bash
+      run: |
+        set -euo pipefail
+        for attempt in 1 2 3; do
+          if { [ "$attempt" = 1 ] || sudo timeout --kill-after=10 180 apt-get update -qq; } \
+             && sudo timeout --kill-after=10 300 apt-get install -y -qq --no-install-recommends ffmpeg; then
+            exit 0
+          fi
+          echo "apt attempt $attempt failed; retrying"; sleep 10
+        done
+        echo "::error::could not install ffmpeg after 3 attempts"; exit 1
+
+    - name: Seed the module
+      shell: bash
+      run: |
+        set -euo pipefail
+        dotnet tool install -g alcifra.cli
+        tools/client-check/seed.sh
+        # Only now does the core serve this host: the seed named it. Before that, 404 is the design.
+        curl -fsS --cacert "$CHECK_CA" "${CHECK_HOST:-https://tube.test}/api/v1/config" | head -c 200; echo
