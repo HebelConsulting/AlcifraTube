@@ -18,6 +18,6 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Pinned exactly, never floating (core ADR 0789). -->
-    <PackageReference Include="Alcifra.ModuleAbi" Version="2.0.0" />
+    <PackageReference Include="Alcifra.ModuleAbi" Version="2.1.0" />
   </ItemGroup>
 </Project>

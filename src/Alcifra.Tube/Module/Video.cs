@@ -28,7 +28,9 @@ public static class Video
         new ModuleFieldSeed(Published, "Toggle"),
         new ModuleFieldSeed(PublishedAt, "DateTime"),
         new ModuleFieldSeed(Language, "Text"),
-        new ModuleFieldSeed(Thumbnail, "DocumentReference"),
+        // Accepts only a Video Thumbnail (ABI 2.1, core ADR 1068): the core refuses any other target, and the clients pick
+        // from thumbnails, with "From a file" filing a new one beside the video.
+        new ModuleFieldSeed(Thumbnail, "DocumentReference") { AcceptedMasks = [VideoThumbnail.MaskId] },
         new ModuleFieldSeed(DurationSeconds, "Number"),
         new ModuleFieldSeed(Tags, "Text", IsList: true),
     ])
@@ -94,7 +96,8 @@ public static class TubePlaylist
     };
 }
 
-/// <summary>A video's thumbnail photo (ADR 0006), prepared anywhere: the video's Thumbnail field names it.</summary>
+/// <summary>A video's thumbnail photo (ADR 0006), prepared anywhere: the video's Thumbnail field names it, and accepts nothing
+/// else (core ADR 1068).</summary>
 public static class VideoThumbnail
 {
     public static readonly Guid MaskId = Guid.Parse("7B3E0000-0000-4000-8000-000000000003");
