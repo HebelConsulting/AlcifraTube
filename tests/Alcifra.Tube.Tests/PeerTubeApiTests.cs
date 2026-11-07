@@ -38,6 +38,75 @@ public class PeerTubeApiTests
         new(Guid.NewGuid(), Folder, "Draft.mp4", Video.MaskId, new Dictionary<string, string> { [Video.Published] = "no" }),
     ];
 
+    private static readonly Guid Playlist = Guid.Parse("cccccccc-dddd-4eee-8fff-000000000002");
+    private static readonly Guid Other = Guid.Parse("cccccccc-dddd-4eee-8fff-000000000003");
+    private static readonly Guid Draft = Guid.Parse("cccccccc-dddd-4eee-8fff-000000000004");
+    private static readonly Guid Loose = Guid.Parse("cccccccc-dddd-4eee-8fff-000000000005");
+
+    // A playlist in Talks: the opening talk and a video of another channel, a draft, and a video in no channel at all.
+    private static (PeerTubeController Api, Guid News) PlaylistHost()
+    {
+        var news = Guid.Parse("77777777-8888-4999-8aaa-bbbbbbbbbbbc");
+        var published = new Dictionary<string, string> { [Video.Published] = "yes", [Video.PublishedAt] = "2026-10-02T09:00:00Z" };
+        IReadOnlyList<ModuleDocument> documents =
+        [
+            .. Seed(),
+            new(news, null, "News", TubeChannel.MaskId, new Dictionary<string, string>()),
+            new(Other, news, "Other.mp4", Video.MaskId, published),
+            new(Draft, Folder, "Second draft.mp4", Video.MaskId, new Dictionary<string, string> { [Video.Published] = "no" }),
+            new(Loose, null, "Loose.mp4", Video.MaskId, published),
+            new(Playlist, Folder, "Best of", TubePlaylist.MaskId, new Dictionary<string, string>()),
+        ];
+        var archive = new StubArchive(documents, new Dictionary<string, string> { [TubeSettings.NameKey] = "Kristall Tube" });
+        var at = DateTimeOffset.Parse("2026-11-01T00:00:00Z", CultureInfo.InvariantCulture);
+        archive.References.AddRange([(Playlist, Other, at), (Playlist, Clip, at.AddHours(1)), (Playlist, Draft, at.AddHours(2)), (Playlist, Loose, at.AddHours(3))]);
+        var caller = new StubCaller(Tenant);
+        var http = new DefaultHttpContext();
+        http.Request.Host = new HostString("video.example.test");
+        var api = new PeerTubeController(new VideoCatalogue(archive, caller, new EncryptionWarnings(), NullLogger<VideoCatalogue>.Instance), new VideoDirectory(archive, caller), caller)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+        };
+        return (api, news);
+    }
+
+    [Fact]
+    public async Task A_channel_lists_its_playlists_with_what_can_be_shown()
+    {
+        var (api, news) = PlaylistHost();
+        var list = Json(await api.VideoChannelPlaylists(PeerTubeShapes.ChannelName(Folder), CancellationToken.None));
+        Assert.Equal(1, list.GetProperty("total").GetInt32());
+        var item = list.GetProperty("data")[0];
+        Assert.Equal(Playlist.ToString("D"), item.GetProperty("uuid").GetString());
+        Assert.Equal("Best of", item.GetProperty("displayName").GetString());
+        Assert.Equal(2, item.GetProperty("videosLength").GetInt32());
+        Assert.Equal(0, Json(await api.VideoChannelPlaylists(PeerTubeShapes.ChannelName(news), CancellationToken.None)).GetProperty("total").GetInt32());
+    }
+
+    [Fact]
+    public async Task A_playlist_plays_in_the_order_placed_and_only_what_is_published_in_a_channel()
+    {
+        var (api, _) = PlaylistHost();
+        var page = Json(await api.PlaylistVideos(Playlist, 0, 15, CancellationToken.None));
+        Assert.Equal(2, page.GetProperty("total").GetInt32());
+        var data = page.GetProperty("data");
+        Assert.Equal(Other.ToString("D"), data[0].GetProperty("video").GetProperty("uuid").GetString());
+        Assert.Equal(1, data[0].GetProperty("position").GetInt32());
+        Assert.Equal(Clip.ToString("D"), data[1].GetProperty("video").GetProperty("uuid").GetString());
+        Assert.Equal(2, data[1].GetProperty("position").GetInt32());
+    }
+
+    [Fact]
+    public async Task A_playlist_answers_by_its_id_and_search_finds_it_by_name()
+    {
+        var (api, _) = PlaylistHost();
+        Assert.Equal("Best of", Json(await api.PlaylistInfo(Playlist, CancellationToken.None)).GetProperty("displayName").GetString());
+        Assert.IsType<NotFoundResult>(await api.PlaylistInfo(Guid.NewGuid(), CancellationToken.None));
+        Assert.IsType<NotFoundResult>(await api.PlaylistVideos(Guid.NewGuid(), 0, 15, CancellationToken.None));
+        Assert.Equal(1, Json(await api.SearchPlaylists("best", CancellationToken.None)).GetProperty("total").GetInt32());
+        Assert.Equal(0, Json(await api.SearchPlaylists("nothing", CancellationToken.None)).GetProperty("total").GetInt32());
+    }
+
     private static JsonElement Json(IActionResult result) => JsonDocument.Parse(JsonSerializer.Serialize(Assert.IsType<OkObjectResult>(result).Value)).RootElement;
 
     [Fact]

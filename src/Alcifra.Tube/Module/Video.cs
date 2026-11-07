@@ -71,7 +71,24 @@ public static class TubeChannel
         new ModuleFieldSeed(Description, "Text"),
     ],
     AdmitsOnlyDeclaredChildren: true,
-    AdmittedChildren: [Video.MaskId, VideoThumbnail.MaskId])
+    AdmittedChildren: [Video.MaskId, VideoThumbnail.MaskId, TubePlaylist.MaskId])
+    {
+        ReferencesObeyAdmission = true,
+    };
+}
+
+/// <summary>
+/// A playlist (ADR 0012): a folder under a channel holding only references to videos, of any channel the person can see. It
+/// is published with its channel and shows only what is published in a channel.
+/// </summary>
+public static class TubePlaylist
+{
+    public static readonly Guid MaskId = Guid.Parse("7B3E0000-0000-4000-8000-000000000004");
+
+    public static readonly ModuleMaskSeed Mask = new(MaskId, "Tube Playlist", IsFolderMask: true, IsBookable: false, [],
+        AllowedParents: [TubeChannel.MaskId],
+        AdmitsOnlyDeclaredChildren: true,
+        AdmittedChildren: [Video.MaskId])
     {
         ReferencesObeyAdmission = true,
     };

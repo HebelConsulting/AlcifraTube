@@ -53,6 +53,11 @@ in a mobile app.]
 The proxy in front of the video host has to pass `/`, `/c/` and `/faq` to the module as well, and each thumbnail counts
 against the limit on anonymous requests per address.
 
+A *Tube Playlist* is a folder in a channel that holds only references to videos, of any channel you can see: *New ▸ Tube
+Playlist* on the channel, then place references in it. It is published with its channel, plays in the order the references
+were placed, and shows only what is published in a channel. The channel's page links its playlists, and PeerTube clients
+find them under the channel.
+
 = The Tube tab
 
 #feature(id: "tab", title: "The Tube tab in every client")[Where the module is active, the clients gain a *Tube* tab or tile. It lists the channels you can see, each with a checkbox

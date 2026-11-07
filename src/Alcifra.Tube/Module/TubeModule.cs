@@ -18,7 +18,7 @@ public sealed class TubeModule : IIndustryModule
     public bool RequiresLicence => false;
     public string LicenseVerifyKeyPem => string.Empty;
 
-    public IReadOnlyList<ModuleMaskSeed> Masks { get; } = [TubeChannel.Mask, Video.Mask, VideoThumbnail.Mask];
+    public IReadOnlyList<ModuleMaskSeed> Masks { get; } = [TubeChannel.Mask, Video.Mask, VideoThumbnail.Mask, TubePlaylist.Mask];
 
     public IReadOnlyList<ModuleSetting> Settings { get; } =
     [

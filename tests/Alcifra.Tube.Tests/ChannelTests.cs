@@ -204,7 +204,12 @@ public class ChannelTests
         Assert.True(TubeChannel.Mask.IsFolderMask);
         Assert.True(TubeChannel.Mask.AdmitsOnlyDeclaredChildren);
         Assert.True(TubeChannel.Mask.ReferencesObeyAdmission);
-        Assert.Equal([Video.MaskId, VideoThumbnail.MaskId], TubeChannel.Mask.AdmittedChildren!);
+        Assert.Equal([Video.MaskId, VideoThumbnail.MaskId, TubePlaylist.MaskId], TubeChannel.Mask.AdmittedChildren!);
+        Assert.True(TubePlaylist.Mask.IsFolderMask);
+        Assert.True(TubePlaylist.Mask.AdmitsOnlyDeclaredChildren);
+        Assert.True(TubePlaylist.Mask.ReferencesObeyAdmission);
+        Assert.Equal([Video.MaskId], TubePlaylist.Mask.AdmittedChildren!);
+        Assert.Equal([TubeChannel.MaskId], TubePlaylist.Mask.AllowedParents!);
         Assert.Null(Video.Mask.AllowedParents);
         Assert.Null(VideoThumbnail.Mask.AllowedParents);
         Assert.Equal(["mp4", "m4v", "webm", "mov", "mkv", "ogv"], Video.Mask.AcceptedExtensions!);

@@ -45,6 +45,42 @@ public sealed class VideoCatalogue(IModuleArchiveFacade archive, IModuleCallerCo
             .Select(p => p.Video)
             .FirstOrDefault();
 
+    /// <summary>The playlists under a channel (ADR 0012), by name so the order is stable.</summary>
+    public async Task<IReadOnlyList<ModuleDocument>> PlaylistsAsync(Guid channelId, CancellationToken cancellationToken) =>
+        [.. (await archive.GetChildrenAsync(channelId, TubePlaylist.MaskId, cancellationToken)).OrderBy(p => p.Name, StringComparer.CurrentCulture)];
+
+    /// <summary>A playlist with its channel; null when it is under none this module can see, as on an encrypting tenant.</summary>
+    public async Task<(ModuleDocument Playlist, ModuleDocument Channel)?> PlaylistAsync(Guid playlistId, CancellationToken cancellationToken)
+    {
+        foreach (var channel in await ChannelsAsync(cancellationToken))
+        {
+            if ((await PlaylistsAsync(channel.Id, cancellationToken)).FirstOrDefault(p => p.Id == playlistId) is { } playlist)
+            {
+                return (playlist, channel);
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// What a playlist shows, in the order placed: only what is published in a channel, each naming a channel as a request by
+    /// id does. A draft or a video in no channel holds its place in the folder and is shown nowhere, whatever it says.
+    /// </summary>
+    public async Task<IReadOnlyList<PublishedVideo>> PlaylistVideosAsync(Guid playlistId, CancellationToken cancellationToken)
+    {
+        var videos = new List<PublishedVideo>();
+        foreach (var document in (await archive.GetReferencedAsync(playlistId, Video.MaskId, cancellationToken)).OrderBy(d => d.ReferencedAt ?? DateTimeOffset.MaxValue))
+        {
+            if (await PublishedAsync(document.Id, cancellationToken) is { } video)
+            {
+                videos.Add(video);
+            }
+        }
+
+        return videos;
+    }
+
     private async Task<List<Placement>> PlacementsAsync(CancellationToken cancellationToken)
     {
         var placements = new List<Placement>();

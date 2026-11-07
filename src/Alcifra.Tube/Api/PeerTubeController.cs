@@ -116,10 +116,54 @@ public sealed class PeerTubeController(VideoCatalogue catalogue, VideoDirectory 
     public Task<IActionResult> VideoChannelVideosHead(string name, [FromQuery] int start = 0, [FromQuery] int count = 15, CancellationToken ct = default) => VideoChannelVideos(name, start, count, ct);
 
     [HttpGet("video-channels/{name}/video-playlists")]
-    public async Task<IActionResult> VideoChannelPlaylists(string name, CancellationToken ct) => await FolderAsync(name, ct) is null ? NotFound() : Ok(NoItems);
+    public async Task<IActionResult> VideoChannelPlaylists(string name, CancellationToken ct)
+    {
+        if (await FolderAsync(name, ct) is not { } channel)
+        {
+            return NotFound();
+        }
+
+        var items = new List<object>();
+        foreach (var playlist in await catalogue.PlaylistsAsync(channel.FolderId, ct))
+        {
+            items.Add(await PlaylistJsonAsync(playlist, channel, ct));
+        }
+
+        return Ok(PeerTubeShapes.Page(items, 0, items.Count));
+    }
 
     [HttpHead("video-channels/{name}/video-playlists")]
     public Task<IActionResult> VideoChannelPlaylistsHead(string name, CancellationToken ct) => VideoChannelPlaylists(name, ct);
+
+    [HttpGet("video-playlists/{playlistId:guid}")]
+    public async Task<IActionResult> PlaylistInfo(Guid playlistId, CancellationToken ct) =>
+        await catalogue.PlaylistAsync(playlistId, ct) is { } found
+            ? Ok(await PlaylistJsonAsync(found.Playlist, VideoDirectory.ChannelOf(found.Channel), ct))
+            : NotFound();
+
+    [HttpHead("video-playlists/{playlistId:guid}")]
+    public Task<IActionResult> PlaylistInfoHead(Guid playlistId, CancellationToken ct) => PlaylistInfo(playlistId, ct);
+
+    [HttpGet("video-playlists/{playlistId:guid}/videos")]
+    public async Task<IActionResult> PlaylistVideos(Guid playlistId, [FromQuery] int start = 0, [FromQuery] int count = 15, CancellationToken ct = default)
+    {
+        if (await catalogue.PlaylistAsync(playlistId, ct) is null)
+        {
+            return NotFound();
+        }
+
+        var account = await AccountAsync(ct);
+        var items = new List<object>();
+        foreach (var video in await catalogue.PlaylistVideosAsync(playlistId, ct))
+        {
+            items.Add(new { id = video.Id.GetHashCode() & 0x7fffffff, position = items.Count + 1, startTimestamp = (int?)null, stopTimestamp = (int?)null, video = PeerTubeShapes.VideoItem(video, await ChannelAsync(video, ct), account, Host) });
+        }
+
+        return Ok(PeerTubeShapes.Page(items, start, count));
+    }
+
+    [HttpHead("video-playlists/{playlistId:guid}/videos")]
+    public Task<IActionResult> PlaylistVideosHead(Guid playlistId, [FromQuery] int start = 0, [FromQuery] int count = 15, CancellationToken ct = default) => PlaylistVideos(playlistId, start, count, ct);
 
     [HttpGet("accounts/{name}")]
     public async Task<IActionResult> AccountInfo(string name, CancellationToken ct) =>
@@ -183,10 +227,25 @@ public sealed class PeerTubeController(VideoCatalogue catalogue, VideoDirectory 
     public Task<IActionResult> SearchChannelsHead([FromQuery] string? search, CancellationToken ct) => SearchChannels(search, ct);
 
     [HttpGet("search/video-playlists")]
-    public IActionResult SearchPlaylists() => Ok(NoItems);
+    public async Task<IActionResult> SearchPlaylists([FromQuery] string? search, CancellationToken ct)
+    {
+        var found = new List<object>();
+        foreach (var channel in await catalogue.ChannelsAsync(ct))
+        {
+            foreach (var playlist in await catalogue.PlaylistsAsync(channel.Id, ct))
+            {
+                if (string.IsNullOrWhiteSpace(search) || playlist.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
+                {
+                    found.Add(await PlaylistJsonAsync(playlist, VideoDirectory.ChannelOf(channel), ct));
+                }
+            }
+        }
+
+        return Ok(PeerTubeShapes.Page(found, 0, found.Count));
+    }
 
     [HttpHead("search/video-playlists")]
-    public IActionResult SearchPlaylistsHead() => SearchPlaylists();
+    public Task<IActionResult> SearchPlaylistsHead([FromQuery] string? search, CancellationToken ct) => SearchPlaylists(search, ct);
 
     // The catalogue, optionally one channel's and optionally searched; every sort the clients know is newest first.
     private async Task<IActionResult> ListAsync(Guid? folderId, string? search, int start, int count, CancellationToken ct)
@@ -209,6 +268,9 @@ public sealed class PeerTubeController(VideoCatalogue catalogue, VideoDirectory 
     }
 
     private string Host => Request.Host.Host;
+
+    private async Task<object> PlaylistJsonAsync(ModuleDocument playlist, Channel channel, CancellationToken ct) =>
+        PeerTubeShapes.PlaylistJson(playlist.Id, playlist.Name, (await catalogue.PlaylistVideosAsync(playlist.Id, ct)).Count, channel, await AccountAsync(ct), Host);
 
     private bool IsOurAccount(string name) => name.Split('@')[0] == PeerTubeShapes.AccountName(caller.TenantId);
 
