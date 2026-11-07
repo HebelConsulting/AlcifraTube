@@ -1,4 +1,4 @@
-#import "template.typ": conf, accent, feature
+#import "template.typ": conf, accent, feature, shot
 
 #show: doc => conf(doc)
 
@@ -41,10 +41,14 @@ per channel it is in; opening one names the channel it sits in, else the one tha
 
 = The pages in a browser
 
-#feature(id: "pages", title: "Your video host in a browser")[The video host's front page shows the latest videos, the newest in the upper left corner and the oldest in the lower right,
+#feature(id: "pages", title: "Your video host in a browser", figure: "tube-front")[The video host's front page shows the latest videos, the newest in the upper left corner and the oldest in the lower right,
 24 to a page, each with its thumbnail and description. Each video links to its channel's page, which shows that channel's
 latest videos the same way. A video in two channels appears once for each. The front page links to a short FAQ on watching
 in a mobile app.]
+
+#shot("screenshots/tube-front.png", [The video host's front page: the latest videos, newest first.])
+
+#shot("screenshots/tube-watch.png", [A video's page, around the browser's own player.])
 
 The proxy in front of the video host has to pass `/`, `/c/` and `/faq` to the module as well, and each thumbnail counts
 against the limit on anonymous requests per address.
