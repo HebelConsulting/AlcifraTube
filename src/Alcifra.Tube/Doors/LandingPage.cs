@@ -1,3 +1,4 @@
+using Alcifra.ModuleAbi;
 using Alcifra.Tube.Api;
 using Alcifra.Tube.Module;
 
@@ -33,13 +34,17 @@ public static class LandingPage
             [nameof(LatestView.Page)] = page,
         });
 
-    public static Task<string> Channel(Channel channel, IReadOnlyList<PublishedVideo> videos, Account account, int page) =>
+    /// <summary>A playlist's page, under its channel's address, which the edge already passes (ADR 0012).</summary>
+    public static string PlaylistAddress(Guid channelId, Guid playlistId) => $"{ChannelAddress(channelId)}/{playlistId:D}";
+
+    public static Task<string> Channel(Channel channel, IReadOnlyList<PublishedVideo> videos, Account account, int page, IReadOnlyList<ModuleDocument>? playlists = null) =>
         PageRenderer.RenderAsync<ChannelView>(new()
         {
             [nameof(ChannelView.Channel)] = channel,
             [nameof(ChannelView.Videos)] = videos,
             [nameof(ChannelView.Account)] = account,
             [nameof(ChannelView.Page)] = page,
+            [nameof(ChannelView.Playlists)] = playlists ?? [],
         });
 
     public static Task<string> Faq(Account account) =>

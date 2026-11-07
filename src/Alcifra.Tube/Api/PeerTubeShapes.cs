@@ -206,6 +206,26 @@ public static class PeerTubeShapes
         };
     }
 
+    /// <summary>A playlist as a client reads it (ADR 0012): public, with its channel and how many videos it can show.</summary>
+    public static object PlaylistJson(Guid id, string name, int videosLength, Channel channel, Account account, string host) => new
+    {
+        id = id.GetHashCode() & 0x7fffffff,
+        uuid = id.ToString("D"),
+        shortUUID = id.ToString("N"),
+        displayName = name,
+        description = (string?)null,
+        isLocal = true,
+        url = $"https://{host}/video-playlists/{id:D}",
+        videosLength,
+        privacy = new { id = 1, label = "Public" },
+        type = new { id = 1, label = "Regular" },
+        thumbnailPath = (string?)null,
+        createdAt = UnknownDate,
+        updatedAt = UnknownDate,
+        ownerAccount = AccountJson(account, host),
+        videoChannel = ChannelJson(channel, account, host),
+    };
+
     public static object ChannelJson(Channel channel, Account account, string host)
     {
         var origin = $"https://{host}";
