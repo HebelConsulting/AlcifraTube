@@ -78,13 +78,14 @@ public class FileDoorTests
     }
 
     [Fact]
-    public void The_module_is_free_serves_peertube_anonymously_on_the_tenants_host_and_stores_under_its_own_segment()
+    public void The_module_is_free_serves_peertube_anonymously_on_the_tenants_host_and_stores_like_any_document()
     {
         var module = new TubeModule();
         Assert.False(module.RequiresLicence);
         Assert.Equal(ModuleAbiVersion.Minor, module.AbiMinorVersion);
         Assert.Equal([("peertube", "tube.host")], module.AnonymousRootPrefixes.Select(p => (p.Prefix, p.HostSettingKey)));
-        Assert.Equal("tube", Video.Mask.ContentSegment);
+        Assert.Null(Video.Mask.ContentSegment);   // the archive's ordinary keys (owner, 2026-11-11)
+        Assert.Null(VideoThumbnail.Mask.ContentSegment);
         Assert.Contains(module.Settings, s => s.Key == TubeSettings.HostKey);
         Assert.NotNull(module.Manual);
     }

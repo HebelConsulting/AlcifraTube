@@ -12,7 +12,6 @@ namespace Alcifra.Tube.Module;
 public static class Video
 {
     public static readonly Guid MaskId = Guid.Parse("7B3E0000-0000-4000-8000-000000000001");
-    public const string Segment = "tube";
 
     public const string Description = "Description";
     public const string Published = "Published";
@@ -35,7 +34,9 @@ public static class Video
         new ModuleFieldSeed(Tags, "Text", IsList: true),
     ])
     {
-        ContentSegment = Segment,
+        // No content segment of its own (owner, 2026-11-11): a tenant that publishes videos keeps them as the important
+        // data they are, under the archive's ordinary keys, backed up and kept like every other document. Versions filed
+        // under `tube/` before stay there and are read by their stored key.
 
         // What the file door can announce to a player. We do not transcode, so what is filed is what clients must play.
         AcceptedExtensions = ["mp4", "m4v", "webm", "mov", "mkv", "ogv"],
@@ -104,7 +105,6 @@ public static class VideoThumbnail
 
     public static readonly ModuleMaskSeed Mask = new(MaskId, "Video Thumbnail", IsFolderMask: false, IsBookable: false, [])
     {
-        ContentSegment = Video.Segment,
         AcceptedExtensions = ["jpg", "jpeg", "png", "webp"],
     };
 }
