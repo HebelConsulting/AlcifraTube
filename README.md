@@ -4,6 +4,8 @@ A free module for Alcifra: a PeerTube-compatible backend. File a video anywhere 
 and PeerTube clients play it from your own video host, streamed straight from object storage.
 
 - Licence: Apache-2.0.
+- Any website can show a published video in a frame, `https://<video host>/videos/embed/<id>`; the manual's *A video on
+  another website* has the details.
 - Checked weekly against the clients people install: the official app's parsers and its Android build on an emulator, and
   NewPipe's extractor, each at its newest release, on a stack stood up in the runner (`tools/client-check`). A failure
   opens an issue.

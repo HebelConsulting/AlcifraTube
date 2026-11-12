@@ -10,7 +10,7 @@
 #let after-heading = state("manual.after-heading", false)
 
 #let conf(version: "", date: "", doc) = {
-  set document(title: "Alcifra Encryption — Module Manual")
+  set document(title: "Alcifra Tube — Module Manual")
   // Named because the last-third heading rule below computes against the page BODY, and a margin changed
   // here but not there would silently move where "the last third" begins.
   let margin-top = 2.4cm
@@ -33,7 +33,7 @@
       grid(
         columns: (1fr, 1fr),
         align: (left, right),
-        [Alcifra Encryption — Module Manual],
+        [Alcifra Tube — Module Manual],
         counter(page).display("1"),
       )
     },

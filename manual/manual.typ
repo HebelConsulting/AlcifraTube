@@ -58,6 +58,38 @@ Playlist* on the channel, then place references in it. It is published with its 
 were placed, and shows only what is published in a channel. The channel's page links its playlists, and PeerTube clients
 find them under the channel.
 
+= A video on another website
+
+#feature(id: "embed", title: "A video on another website")[Any website can show a published video, and its owner needs nothing from you: no account, no key, no signed address.
+Open the video's page on your video host and copy its address, `https://video.example.com/videos/watch/<id>`. Replace
+`watch` by `embed`, and the other site places that address in a frame. The embed page holds nothing but the player, and it
+is the one page of your video host that other sites may frame.]
+
+```html
+<iframe src="https://video.example.com/videos/embed/<id>"
+        width="560" height="315" allowfullscreen
+        title="The video's title"></iframe>
+```
+
+A site that wants its own player points a `<video>` element at the video's file address,
+`https://video.example.com/files/<id>.mp4` (with the extension the video was filed with), and its poster at
+`https://video.example.com/files/<id>/thumbnail`. The file address answers every request with a fresh link into your
+storage. *Never copy that storage link*: it is signed for five minutes only, so a page that kept it would stop playing. The
+stable addresses above never change while the video stays published.
+
+What the other site should know:
+
+- The video plays only while it is published and sits in a channel. Unpublish it, or take it out of every channel, and every
+  embed stops at its next load.
+- Its visitors' browsers fetch the page and the file from your video host, and the video's bytes from your storage
+  directly. So their addresses reach your installation, and each request counts against the limit on anonymous requests per
+  address.
+- A site with a Content Security Policy of its own lists your video host under `frame-src` for the frame, or your video host
+  and your storage host under `media-src` for a `<video>` element.
+- There is no oEmbed: a site builder that turns a pasted link into a player (WordPress, for one) needs the frame pasted as
+  HTML instead.
+- A tenant that encrypts at rest publishes nothing, so there is nothing to embed.
+
 = The Tube tab
 
 #feature(id: "tab", title: "The Tube tab in every client")[Where the module is active, the clients gain a *Tube* tab or tile. It lists the channels you can see, each with a checkbox
