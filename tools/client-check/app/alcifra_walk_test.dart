@@ -215,8 +215,8 @@ String situation(WidgetTester tester) {
     parts.add('a dialog says: $texts');
   }
 
-  final fields = find.byType(TextField).evaluate();
-  if (fields.isNotEmpty) {
+  final fields = find.byType(TextField);
+  if (fields.evaluate().isNotEmpty) {
     parts.add('the field holds "${tester.widget<TextField>(fields.first).controller?.text ?? ''}"');
   }
 
