@@ -55,9 +55,17 @@ void main() {
     // offers a login once (closed here: the walk browses as a guest). Then the clip is in the list.
     final confirm = find.descendant(of: find.byType(PlatformDialog), matching: find.text(l10n.confirm));
     final closeLogin = find.descendant(of: find.byType(AlertDialog), matching: iconLabelled(l10n.cancel));
-    await waitFor(tester, find.text(clip), 'the platform home with the seeded clip', timeout: network, meanwhile: () async {
+    // The wait below covers the platform SWITCH as well as the listing, and a red run of it used to say only that the
+    // clip never showed (#21): not whether the switch dialog came up, stood there, or an error dialog took its place.
+    // The situation is named every five seconds and in the timeout itself.
+    var waited = 0;
+    await waitFor(tester, find.text(clip), 'the platform home with the seeded clip', timeout: network,
+        diagnose: () => situation(tester), meanwhile: () async {
       await tapIfPresent(tester, confirm);
       await tapIfPresent(tester, closeLogin);
+      if (++waited % 10 == 0) {
+        debugPrint('walk: still waiting for the clip after ${waited * step.inMilliseconds ~/ 1000} s; ${situation(tester)}');
+      }
     });
     // The clip is listed twice (a horizontal shelf and the main list); the first match may sit under a header and take
     // no tap. The tile around the last one is scrolled into view and its own gesture target tapped; a tap that opens no
@@ -145,6 +153,7 @@ Future<Finder> waitFor(
   String where, {
   Duration timeout = const Duration(seconds: 30),
   Future<void> Function()? meanwhile,
+  String Function()? diagnose,
 }) async {
   final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
@@ -152,7 +161,8 @@ Future<Finder> waitFor(
     if (finder.evaluate().isNotEmpty) return finder;
     if (meanwhile != null) await meanwhile();
   }
-  fail('$where did not show $finder within ${timeout.inSeconds} s; the screen says: ${visibleTexts()}');
+  final extra = diagnose == null ? '' : '; the walk stood in: ${diagnose()}';
+  fail('$where did not show $finder within ${timeout.inSeconds} s; the screen says: ${visibleTexts()}$extra');
 }
 
 Future<void> tap(WidgetTester tester, Finder finder, String where, {Duration timeout = const Duration(seconds: 30)}) async {
@@ -182,6 +192,35 @@ Future<T?> pollOrNull<T>(WidgetTester tester, T? Function() read, {Duration time
     if (++ticks % 20 == 0) progress?.call();
   }
   return null;
+}
+
+/// What the platform-switch side of the walk holds right now: the dialogs on screen (with their texts) and what the
+/// add screen's field carries. A wait for the clip times out after 90 s, and the screen's texts alone could not say
+/// whether the switch dialog never came up, stood there unconfirmed, or an error dialog had replaced it (#21).
+String situation(WidgetTester tester) {
+  final parts = <String>[];
+  if (find.byType(PlatformDialog).evaluate().isNotEmpty) {
+    parts.add('the platform-switch dialog is up');
+  }
+
+  for (final element in find.byType(Dialog).evaluate()) {
+    final texts = find
+        .descendant(of: find.byWidget(element.widget), matching: find.byType(Text))
+        .evaluate()
+        .map((text) => (text.widget as Text).data)
+        .whereType<String>()
+        .map((text) => text.trim())
+        .where((text) => text.isNotEmpty)
+        .join(' / ');
+    parts.add('a dialog says: $texts');
+  }
+
+  final fields = find.byType(TextField).evaluate();
+  if (fields.isNotEmpty) {
+    parts.add('the field holds "${tester.widget<TextField>(fields.first).controller?.text ?? ''}"');
+  }
+
+  return parts.isEmpty ? 'no dialog and no field' : parts.join('; ');
 }
 
 /// What a person would read on the screen now: the context a failed wait reports.
