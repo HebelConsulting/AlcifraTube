@@ -15,8 +15,11 @@ public static class LandingPage
     // No script; images come from the file door, which redirects to the storage host.
     public const string Policy = "default-src 'none'; img-src 'self' https:; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
 
-    /// <summary>The address of a channel's page, which every surface showing a video links to.</summary>
-    public static string ChannelAddress(Guid channelId) => $"/c/{PeerTubeShapes.ChannelName(channelId)}";
+    /// <summary>The address of a channel's page, by its NAME (owner decision 2026-11-26, AlcifraTube #28): these pages are
+    /// the module's own HTML, never the protocol, so a human-readable, reset-stable segment is free here — and the API
+    /// keeps its opaque <c>f-&lt;guid&gt;</c> handle. Sibling-name uniqueness makes the name unambiguous among the
+    /// host's channels; a name containing '/' cannot be addressed this way (routing refuses the encoded slash).</summary>
+    public static string ChannelAddress(string channelName) => $"/c/{Uri.EscapeDataString(channelName)}";
 
     /// <summary>The 1-based page, within what exists; anything else that was asked for is the first page.</summary>
     public static int ClampPage(int page, int videoCount) =>
@@ -34,13 +37,19 @@ public static class LandingPage
             [nameof(LatestView.Page)] = page,
         });
 
-    /// <summary>A playlist's page, under its channel's address, which the edge already passes (ADR 0012).</summary>
-    public static string PlaylistAddress(Guid channelId, Guid playlistId) => $"{ChannelAddress(channelId)}/{playlistId:D}";
+    /// <summary>A playlist's page, under its channel's address, by NAME (ADR 0012; owner decision 2026-11-26): the
+    /// playlist name is unique within its channel (sibling rules), so the pair is unambiguous — and stable across a
+    /// reset, which the guid was not.</summary>
+    public static string PlaylistAddress(string channelName, string playlistName) =>
+        $"{ChannelAddress(channelName)}/{Uri.EscapeDataString(playlistName)}";
 
-    public static Task<string> Channel(Channel channel, IReadOnlyList<PublishedVideo> videos, Account account, int page, IReadOnlyList<ModuleDocument>? playlists = null) =>
+    /// <param name="addressName">The real channel's name (the address segment); a playlist's page passes its channel's,
+    /// because <paramref name="channel"/>'s heading then carries the playlist's name.</param>
+    public static Task<string> Channel(Channel channel, IReadOnlyList<PublishedVideo> videos, Account account, int page, IReadOnlyList<ModuleDocument>? playlists = null, string? addressName = null) =>
         PageRenderer.RenderAsync<ChannelView>(new()
         {
             [nameof(ChannelView.Channel)] = channel,
+            [nameof(ChannelView.AddressName)] = addressName ?? channel.Name,
             [nameof(ChannelView.Videos)] = videos,
             [nameof(ChannelView.Account)] = account,
             [nameof(ChannelView.Page)] = page,
