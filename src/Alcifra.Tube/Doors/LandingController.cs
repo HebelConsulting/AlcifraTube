@@ -29,8 +29,7 @@ public sealed class LandingController(VideoCatalogue catalogue, VideoDirectory d
     [HttpGet("c/{name}")]
     public async Task<IActionResult> Channel(string name, [FromQuery] int page, CancellationToken ct)
     {
-        var channels = await catalogue.ChannelsAsync(ct);
-        if (channels.FirstOrDefault(c => PeerTubeShapes.ChannelName(c.Id) == name) is not { } channel)
+        if (await FindChannelAsync(name, ct) is not { } channel)
         {
             return NotFound();
         }
@@ -41,20 +40,26 @@ public sealed class LandingController(VideoCatalogue catalogue, VideoDirectory d
     }
 
     /// <summary>One playlist's videos, the channel's page with the playlist's name (ADR 0012); no pages, a playlist is short.</summary>
-    [HttpGet("c/{name}/{playlistId:guid}")]
-    public async Task<IActionResult> Playlist(string name, Guid playlistId, CancellationToken ct)
+    [HttpGet("c/{name}/{playlist}")]
+    public async Task<IActionResult> Playlist(string name, string playlist, CancellationToken ct)
     {
-        if (await catalogue.PlaylistAsync(playlistId, ct) is not { } found || PeerTubeShapes.ChannelName(found.Channel.Id) != name)
+        if (await FindChannelAsync(name, ct) is not { } channel
+            || (await catalogue.PlaylistsAsync(channel.Id, ct)).FirstOrDefault(p => string.Equals(p.Name, playlist, StringComparison.OrdinalIgnoreCase)) is not { } found)
         {
             return NotFound();
         }
 
-        var heading = VideoDirectory.ChannelOf(found.Channel) with { Name = found.Playlist.Name, Description = found.Channel.Name };
-        return Page(await LandingPage.Channel(heading, await catalogue.PlaylistVideosAsync(playlistId, ct), await directory.AccountAsync(Host, ct), 1));
+        var heading = VideoDirectory.ChannelOf(channel) with { Name = found.Name, Description = channel.Name };
+        return Page(await LandingPage.Channel(heading, await catalogue.PlaylistVideosAsync(found.Id, ct), await directory.AccountAsync(Host, ct), 1, addressName: channel.Name));
     }
 
-    [HttpHead("c/{name}/{playlistId:guid}")]
-    public Task<IActionResult> PlaylistHead(string name, Guid playlistId, CancellationToken ct) => Playlist(name, playlistId, ct);
+    // A channel by its NAME (owner decision 2026-11-26, AlcifraTube #28): the pages are the module's own, and sibling
+    // uniqueness makes the name an unambiguous, reset-stable address. Case-insensitive, as document names are.
+    private async Task<Alcifra.ModuleAbi.ModuleDocument?> FindChannelAsync(string name, CancellationToken ct) =>
+        (await catalogue.ChannelsAsync(ct)).FirstOrDefault(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase));
+
+    [HttpHead("c/{name}/{playlist}")]
+    public Task<IActionResult> PlaylistHead(string name, string playlist, CancellationToken ct) => Playlist(name, playlist, ct);
 
     [HttpHead("c/{name}")]
     public Task<IActionResult> ChannelHead(string name, [FromQuery] int page, CancellationToken ct) => Channel(name, page, ct);

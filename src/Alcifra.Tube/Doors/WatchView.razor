@@ -31,7 +31,7 @@
             <Player File="@File" Poster="@Poster" />
             <h1>@Video.Name</h1>
             @* A channel with no folder behind it has no page to link to. *@
-            <p class="by">@if (Channel.FolderId == Guid.Empty) {@Channel.Name} else {<a href="@LandingPage.ChannelAddress(Channel.FolderId)">@Channel.Name</a>} · <a href="/">@Account.Name</a><PublishedDate At="Video.PublishedAt" /></p>
+            <p class="by">@if (Channel.FolderId == Guid.Empty) {@Channel.Name} else {<a href="@LandingPage.ChannelAddress(Channel.Name)">@Channel.Name</a>} · <a href="/">@Account.Name</a><PublishedDate At="Video.PublishedAt" /></p>
             @if (Video.Description.Length > 0)
             {
                 <p class="text">@Video.Description</p>

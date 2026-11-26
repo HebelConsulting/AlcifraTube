@@ -84,8 +84,8 @@ public class LandingPageTests
         var html = Html(await Host(archive).Latest(1, CancellationToken.None));
 
         Assert.Equal(2, html.Split("<h2>Shared</h2>").Length - 1);
-        Assert.Contains($"""<a href="/c/f-{Talks:N}">Talks &amp; &lt;b&gt;news&lt;/b&gt;</a>""", html, StringComparison.Ordinal);
-        Assert.Contains($"""<a href="/c/f-{News:N}">News</a>""", html, StringComparison.Ordinal);
+        Assert.Contains("""<a href="/c/Talks%20%26%20%3Cb%3Enews%3C%2Fb%3E">Talks &amp; &lt;b&gt;news&lt;/b&gt;</a>""", html, StringComparison.Ordinal);
+        Assert.Contains("""<a href="/c/News">News</a>""", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -95,13 +95,36 @@ public class LandingPageTests
             Clip(Older, Talks, "In talks", "true", "2026-09-01T09:00:00Z"),
             Clip(Newer, News, "In news", "true", "2026-10-01T09:00:00Z")));
 
-        var html = Html(await landing.Channel($"f-{Talks:N}", 1, CancellationToken.None));
+        var html = Html(await landing.Channel("Talks & <b>news</b>", 1, CancellationToken.None));
         Assert.Contains("<h1>Talks &amp; &lt;b&gt;news&lt;/b&gt;</h1>", html, StringComparison.Ordinal);
         Assert.Contains("Our talks", html, StringComparison.Ordinal);
         Assert.Contains("<h2>In talks</h2>", html, StringComparison.Ordinal);
         Assert.DoesNotContain("In news", html, StringComparison.Ordinal);
         Assert.IsType<NotFoundResult>(await landing.Channel($"f-{Guid.NewGuid():N}", 1, CancellationToken.None));
         Assert.IsType<NotFoundResult>(await landing.Channel("Talks", 1, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task A_playlist_page_is_addressed_by_its_channels_name_and_its_own_and_a_wrong_pair_has_none()
+    {
+        var playlist = Guid.Parse("77777777-8888-4999-8aaa-000000000003");
+        var archive = Archive(
+            Clip(Older, Talks, "In talks", "true", "2026-09-01T09:00:00Z"),
+            new ModuleDocument(playlist, Talks, "Best of", TubePlaylist.MaskId, new Dictionary<string, string>()));
+        archive.References.Add((playlist, Older, DateTimeOffset.UnixEpoch));
+        var landing = Host(archive);
+
+        // The channel's page links the playlist BY NAME (AlcifraTube #28): stable across a reset, unlike the old guid.
+        var channelPage = Html(await landing.Channel("Talks & <b>news</b>", 1, CancellationToken.None));
+        Assert.Contains("""<a href="/c/Talks%20%26%20%3Cb%3Enews%3C%2Fb%3E/Best%20of">Best of</a>""", channelPage, StringComparison.Ordinal);
+
+        var html = Html(await landing.Playlist("Talks & <b>news</b>", "Best of", CancellationToken.None));
+        Assert.Contains("<h1>Best of</h1>", html, StringComparison.Ordinal);
+        Assert.Contains("<h2>In talks</h2>", html, StringComparison.Ordinal);
+
+        Assert.IsType<NotFoundResult>(await landing.Playlist("News", "Best of", CancellationToken.None));
+        Assert.IsType<NotFoundResult>(await landing.Playlist("Talks & <b>news</b>", "Missing", CancellationToken.None));
+        Assert.IsType<NotFoundResult>(await landing.Playlist("No such channel", "Best of", CancellationToken.None));
     }
 
     [Fact]
@@ -131,7 +154,7 @@ public class LandingPageTests
         Assert.Contains("AlcifraTube has been tested with", faq, StringComparison.Ordinal);
         Assert.Contains("https://apps.apple.com/app/peertube/id6737834858", faq, StringComparison.Ordinal);
 
-        foreach (var html in new[] { faq, Html(await landing.Latest(1, CancellationToken.None)), Html(await landing.Channel($"f-{Talks:N}", 1, CancellationToken.None)) })
+        foreach (var html in new[] { faq, Html(await landing.Latest(1, CancellationToken.None)), Html(await landing.Channel("Talks & <b>news</b>", 1, CancellationToken.None)) })
         {
             Assert.DoesNotContain("<script", html, StringComparison.OrdinalIgnoreCase);
         }

@@ -23,7 +23,7 @@ else
                 <p class="by">
                     @if (video.FolderId is { } channelId)
                     {
-                        <a href="@LandingPage.ChannelAddress(channelId)">@ChannelNames.GetValueOrDefault(channelId, "Videos")</a>
+                        <a href="@LandingPage.ChannelAddress(ChannelNames.GetValueOrDefault(channelId, "Videos"))">@ChannelNames.GetValueOrDefault(channelId, "Videos")</a>
                     }
                     <PublishedDate At="video.PublishedAt" />
                 </p>
